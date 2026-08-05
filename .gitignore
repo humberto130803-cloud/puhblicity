@@ -13,3 +13,5 @@ vault-*.json
 
 .vercel
 .DS_Store
+
+.vercel

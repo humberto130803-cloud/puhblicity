@@ -44,6 +44,13 @@ export function toteValue(lamports: bigint): string {
   return `${w}.${(f + "00").slice(0, Math.max(2, f.length))}`;
 }
 
+/**
+ * SOL padded to at least two decimals: "0.20", "1.44", "0.05".
+ * For anything that stacks in a column — backer lists, receipts, tables —
+ * where a bare "0.2" beside "0.25" reads as a typo.
+ */
+export const padSol = toteValue;
+
 /** Fill percentage from bigint pot/target, display-only. */
 export function fillPct(pot: bigint, target: bigint): number {
   if (target <= 0n) return 0;

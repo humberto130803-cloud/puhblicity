@@ -31,8 +31,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${anton.variable} ${archivo.variable} ${dmMono.variable}`}>
+    // The font variables MUST land on <html>: globals.css builds
+    // --font-display/-body/-mono from them at :root, and a custom property
+    // that references an undefined variable is invalid at computed-value
+    // time — which silently dropped the whole site to Times.
+    <html lang="en" className={`${anton.variable} ${archivo.variable} ${dmMono.variable}`}>
+      <body>
         <Providers>
           <ConfettiCanvas />
           <Chrome />

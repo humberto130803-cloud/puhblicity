@@ -23,6 +23,7 @@ export type PublicDare = {
   doer_wallet_short: string;
   category_id: string;
   category_label: string;
+  category_short: string;
   category_emoji: string;
   category_blurb: string;
   detail: string;
@@ -50,6 +51,7 @@ export function toPublicDare(d: any): PublicDare {
     doer_wallet_short: shortWallet(d.doer_wallet),
     category_id: d.category_id,
     category_label: d.puhb_categories?.label ?? d.category_label ?? "",
+    category_short: d.puhb_categories?.short_label ?? d.category_short ?? "",
     category_emoji: d.puhb_categories?.emoji ?? d.category_emoji ?? "",
     category_blurb: d.puhb_categories?.blurb ?? d.category_blurb ?? "",
     detail: d.detail,
@@ -81,7 +83,7 @@ export function toPublicPledge(p: any): PublicPledge {
   };
 }
 
-const DARE_SELECT = "*, puhb_categories(label, emoji, blurb)";
+const DARE_SELECT = "*, puhb_categories(label, short_label, emoji, blurb)";
 
 /** Board: flagged dares are invisible until an admin clears them. */
 export async function listBoardDares(): Promise<PublicDare[]> {

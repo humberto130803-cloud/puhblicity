@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Tote, Therm, fillPct, toteValue } from "@/components/tote";
+import { Tote, Therm, fillPct } from "@/components/tote";
 import { Clock } from "@/components/clock";
 import { StatusStamp } from "@/components/status-stamp";
 import { Rv } from "@/components/reveal";
@@ -11,7 +11,7 @@ import { ShareCard } from "@/components/share-card";
 import { burst } from "@/components/confetti";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
-import { formatSol } from "@/lib/format";
+import { formatSol, padSol } from "@/lib/format";
 import type { PublicDare, PublicPledge } from "@/lib/dares";
 
 const AVATAR_BG = ["#B8D0EC", "#FFD9A0", "#C9EBD9", "#EED0D0", "#D8E3EF"];
@@ -104,6 +104,16 @@ export function DareView({
 
   const refundsSent = pledges.filter((p) => p.refund_status === "SENT");
 
+  const whatHappened =
+    (dare.status === "KILLED"
+      ? "This dare broke the rules and was removed. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
+      : dare.reject_reason
+      ? `The proof didn't pass review: "${dare.reject_reason}". Every pledge goes back to the wallet it came from — the full amount, no fee deducted.`
+      : dare.proof_due_at && new Date(dare.proof_due_at) < new Date() && pot >= target
+      ? "The target was hit, but proof never arrived inside the 48-hour window. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
+      : `The deadline passed with ${formatSol(pot)} SOL in the pot against a ${formatSol(target)} target. Every pledge went back to the wallet it came from — the full amount, no fee deducted.`) +
+    ` ${dare.doer_name} keeps nothing and the 0.02 posting fee isn't returned.`;
+
   return (
     <div className="wrap detail-grid">
       {/* ---------------- left column ---------------- */}
@@ -111,7 +121,7 @@ export function DareView({
         <Rv>
           <div style={{ display: "flex", gap: 11, alignItems: "center", flexWrap: "wrap" }}>
             <StatusStamp status={dare.status} big={terminal} />
-            <span className="chip">{dare.category_emoji} <strong>{dare.category_label}</strong></span>
+            <span className="chip">{dare.category_emoji} <strong>{dare.category_short}</strong></span>
             <span className="chip mono">{dare.id}</span>
           </div>
           <h1 className="h2" style={{ marginTop: terminal ? 20 : 18 }}>{dare.category_label}</h1>
@@ -151,16 +161,11 @@ export function DareView({
         {dead && (
           <Rv className="card card-pad">
             <p className="eyebrow">What happened</p>
-            <p style={{ marginTop: 9 }}>
-              {dare.status === "KILLED"
-                ? "This dare broke the rules and was removed. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
-                : dare.reject_reason
-                ? `The proof didn't pass review: "${dare.reject_reason}". Every pledge goes back to the wallet it came from — the full amount, no fee deducted.`
-                : dare.proof_due_at && new Date(dare.proof_due_at) < new Date() && pot >= target
-                ? "The target was hit, but proof never arrived inside the 48-hour window. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
-                : `The deadline passed with ${formatSol(pot)} SOL in the pot against a ${formatSol(target)} target. Every pledge went back to the wallet it came from — the full amount, no fee deducted.`}{" "}
-              {dare.doer_name} keeps nothing and the 0.02 posting fee isn&apos;t returned.
-            </p>
+            {/* One string, not text interleaved with {expressions}: JSX eats
+                the space around an expression that sits at a line boundary,
+                and "Kikikeeps nothing" is the kind of typo nobody catches in
+                review but everybody sees on the page. */}
+            <p style={{ marginTop: 9 }}>{whatHappened}</p>
             {dare.status === "REFUNDING" && (
               <p style={{ marginTop: 11 }} className="muted small">
                 Refunds are going out now — they usually land within minutes.
@@ -178,7 +183,7 @@ export function DareView({
                 <div className="backer" key={p.signature}>
                   <Avatar name={p.backer} i={i} />
                   <span className="backer-note mono small">{p.backer}</span>
-                  <span className="backer-amt">{formatSol(BigInt(p.lamports))} ↩</span>
+                  <span className="backer-amt">{padSol(BigInt(p.lamports))} ↩</span>
                 </div>
               ))}
             </div>
@@ -190,8 +195,9 @@ export function DareView({
           <Rv className="card card-pad">
             <p className="eyebrow">What counts as proof</p>
             <p style={{ marginTop: 9 }}>
-              {dare.category_blurb} If the proof doesn&apos;t match the dare, it&apos;s
-              rejected and every backer is refunded.
+              {dare.category_blurb}{" "}
+              If the proof doesn&apos;t match the dare, it&apos;s rejected and every
+              backer is refunded.
             </p>
           </Rv>
         )}
@@ -220,7 +226,7 @@ export function DareView({
                     <span className="backer-note">
                       {p.note ? `"${p.note}"` : <span className="mono">{p.backer}</span>}
                     </span>
-                    <span className="backer-amt">{formatSol(BigInt(p.lamports))}</span>
+                    <span className="backer-amt">{padSol(BigInt(p.lamports))}</span>
                   </div>
                 ))}
               </div>
@@ -238,14 +244,14 @@ export function DareView({
                 <p className="eyebrow">Settlement receipt</p>
                 <span className="stamp stamp-paid">Paid</span>
               </div>
-              <Tote value={toteValue(payout)} size="lg" style={{ margin: "20px 0 10px" }} />
+              <Tote value={padSol(payout)} size="lg" style={{ margin: "20px 0 10px" }} />
               <div style={{ marginBottom: 22 }}>
                 <Therm pct={100} state="done" notch={false} />
               </div>
-              <div className="rowline"><span>Pot</span><span className="mono">{formatSol(pot)}</span></div>
+              <div className="rowline"><span>Pot</span><span className="mono">{padSol(pot)}</span></div>
               <div className="rowline"><span>Backers</span><span className="mono">{dare.backer_count}</span></div>
-              <div className="rowline"><span>Platform cut (10%)</span><span className="mono">{formatSol(cut)}</span></div>
-              <div className="rowline"><span>Paid to {dare.doer_name}</span><b className="mono">{formatSol(payout)}</b></div>
+              <div className="rowline"><span>Platform cut (10%)</span><span className="mono">{padSol(cut)}</span></div>
+              <div className="rowline"><span>Paid to {dare.doer_name}</span><b className="mono">{padSol(payout)}</b></div>
               {dare.settled_at && (
                 <div className="rowline">
                   <span>Settled</span>
@@ -270,8 +276,10 @@ export function DareView({
                   </a>
                 </div>
               )}
+              {/* The torn-paper edge has to sit flush under the receipt —
+                  in the parent stack's gap it just reads as empty space. */}
+              <div className="receipt-perf" style={{ margin: "28px -28px -28px" }} />
             </Rv>
-            <div className="receipt-perf" />
             <Rv><ShareCard dare={dare} /></Rv>
             <Rv className="notice notice-ok">
               <b>Your turn.</b> {dare.doer_name} set a {formatSol(target)} target and
@@ -285,7 +293,7 @@ export function DareView({
           <>
             <Rv className="card card-pad">
               <p className="eyebrow">Final tote</p>
-              <Tote value={toteValue(pot)} size="lg" style={{ margin: "18px 0 10px" }} />
+              <Tote value={padSol(pot)} size="lg" style={{ margin: "18px 0 10px" }} />
               <div style={{ position: "relative", marginBottom: 28 }}>
                 <Therm pct={pct} state="dead" targetLabel={`target ${formatSol(target)}`} />
               </div>
@@ -304,9 +312,9 @@ export function DareView({
               )}
             </Rv>
             <Rv className="notice notice-cool">
-              <b>Didn&apos;t get yours?</b> Refunds land within a few minutes. If
-              yours hasn&apos;t after an hour, send us the transaction and we&apos;ll
-              chase it by hand.
+              <b>Didn&apos;t get yours?</b>{" "}
+              Refunds land within a few minutes. If yours hasn&apos;t after an
+              hour, send us the transaction and we&apos;ll chase it by hand.
               <div style={{ marginTop: 13 }}>
                 <a
                   className="btn btn-sm"
@@ -334,7 +342,7 @@ export function DareView({
           <>
             <Rv className="panel on-field" style={{ padding: 26 }}>
               <p className="eyebrow">In the pot</p>
-              <Tote value={toteValue(pot)} size="lg" onField style={{ margin: "16px 0 22px" }} />
+              <Tote value={padSol(pot)} size="lg" onField style={{ margin: "16px 0 22px" }} />
               <Therm
                 pct={pct}
                 state={pot >= target ? "done" : "live"}

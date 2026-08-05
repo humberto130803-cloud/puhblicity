@@ -17,7 +17,7 @@ export async function GET() {
   const [{ data: dares }, { data: myPledges }] = await Promise.all([
     db
       .from("puhb_dares")
-      .select("*, puhb_categories(label, emoji, blurb)")
+      .select("*, puhb_categories(label, short_label, emoji, blurb)")
       .eq("doer_wallet", session.pubkey)
       .order("created_at", { ascending: false }),
     db

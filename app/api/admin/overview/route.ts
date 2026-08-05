@@ -21,12 +21,12 @@ export async function GET() {
     await Promise.all([
       db
         .from("puhb_dares")
-        .select("*, puhb_categories(label, emoji, blurb)")
+        .select("*, puhb_categories(label, short_label, emoji, blurb)")
         .eq("status", "IN_REVIEW")
         .order("proof_submitted_at", { ascending: true }),
       db
         .from("puhb_dares")
-        .select("*, puhb_categories(label, emoji, blurb)")
+        .select("*, puhb_categories(label, short_label, emoji, blurb)")
         .eq("flagged", true)
         .in("status", ["OPEN", "CLOSED", "IN_REVIEW"])
         .order("created_at", { ascending: true }),

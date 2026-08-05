@@ -5,7 +5,7 @@ import { Rv } from "@/components/reveal";
 import { Clock } from "@/components/clock";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
-import { formatSol, shortWallet, ago } from "@/lib/format";
+import { formatSol, padSol, shortWallet, ago } from "@/lib/format";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -75,21 +75,21 @@ export default function AdminPage() {
           <Rv className="statgrid" style={{ marginBottom: 16 }}>
             <div className="stat">
               <span className="eyebrow">Vault balance</span>
-              <b>{data.vaultBalance === "rpc-error" ? "RPC ✕" : formatSol(BigInt(data.vaultBalance))}</b>
+              <b>{data.vaultBalance === "rpc-error" ? "RPC ✕" : padSol(BigInt(data.vaultBalance))}</b>
             </div>
             <div className="stat">
               <span className="eyebrow">Open pot liability</span>
-              <b>{formatSol(BigInt(data.openPot))}</b>
+              <b>{padSol(BigInt(data.openPot))}</b>
             </div>
             <div className="stat">
               <span className="eyebrow">Owed in refunds</span>
               <b style={{ color: BigInt(data.refundsOwed ?? "0") > 0n ? "var(--flare)" : undefined }}>
-                {formatSol(BigInt(data.refundsOwed ?? "0"))}
+                {padSol(BigInt(data.refundsOwed ?? "0"))}
               </b>
             </div>
             <div className="stat">
               <span className="eyebrow">Fees earned</span>
-              <b style={{ color: "var(--jade)" }}>{formatSol(BigInt(data.feesEarned ?? "0"))}</b>
+              <b style={{ color: "var(--jade)" }}>{padSol(BigInt(data.feesEarned ?? "0"))}</b>
             </div>
           </Rv>
 

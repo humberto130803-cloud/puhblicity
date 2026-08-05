@@ -161,9 +161,12 @@ export function Therm({
         {notch && <div className="therm-notch" style={{ left: "100%" }} />}
       </div>
       {targetLabel && (
+        // Right-aligned rather than centred on the notch: the notch sits at
+        // 100%, so a centred label hangs half its width past the panel edge
+        // and gets sheared off.
         <span
           className="therm-target-label"
-          style={{ left: "100%", top: 25, color: onField ? "#CFE0F3" : undefined }}
+          style={{ right: 0, top: 25, color: onField ? "#CFE0F3" : undefined }}
         >
           {targetLabel}
         </span>

@@ -111,9 +111,9 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
       <Rv className="card card-pad">
         <p className="eyebrow">What we need to see</p>
         <p style={{ marginTop: 9 }}>
-          {dare.category_blurb} No cuts, no edits. If it doesn&apos;t match the
-          dare we&apos;ll reject it and refund your backers — you&apos;ll get one line
-          telling you why.
+          {dare.category_blurb}{" "}
+          No cuts, no edits. If it doesn&apos;t match the dare we&apos;ll reject it and
+          refund your backers — you&apos;ll get one line telling you why.
         </p>
       </Rv>
 

@@ -7,7 +7,7 @@ import { Clock } from "@/components/clock";
 import { StatusStamp } from "@/components/status-stamp";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
-import { formatSol, shortWallet } from "@/lib/format";
+import { formatSol, padSol, shortWallet } from "@/lib/format";
 import type { PublicDare } from "@/lib/dares";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -55,10 +55,10 @@ export default function MinePage() {
 
       {data?.stats && (
         <Rv className="statgrid" style={{ marginBottom: 34 }}>
-          <div className="stat"><span className="eyebrow">Paid to me</span><b>{formatSol(BigInt(data.stats.paidToMe))}</b></div>
-          <div className="stat"><span className="eyebrow">In open pots</span><b>{formatSol(BigInt(data.stats.inOpenPots))}</b></div>
-          <div className="stat"><span className="eyebrow">I&apos;ve backed</span><b>{formatSol(BigInt(data.stats.backed))}</b></div>
-          <div className="stat"><span className="eyebrow">Refunded to me</span><b>{formatSol(BigInt(data.stats.refundedToMe))}</b></div>
+          <div className="stat"><span className="eyebrow">Paid to me</span><b>{padSol(BigInt(data.stats.paidToMe))}</b></div>
+          <div className="stat"><span className="eyebrow">In open pots</span><b>{padSol(BigInt(data.stats.inOpenPots))}</b></div>
+          <div className="stat"><span className="eyebrow">I&apos;ve backed</span><b>{padSol(BigInt(data.stats.backed))}</b></div>
+          <div className="stat"><span className="eyebrow">Refunded to me</span><b>{padSol(BigInt(data.stats.refundedToMe))}</b></div>
         </Rv>
       )}
 
@@ -123,7 +123,7 @@ export default function MinePage() {
                       <b>{d.category_label}</b><br />
                       <span className="small muted mono">{d.id}</span>
                     </td>
-                    <td className="mono">{formatSol(BigInt(d.pot))}</td>
+                    <td className="mono">{padSol(BigInt(d.pot))}</td>
                     <td><StatusStamp status={d.status} /></td>
                     <td className="mono small">
                       {d.status === "PAID"
@@ -163,7 +163,7 @@ export default function MinePage() {
                         <b>{p.dare?.label ?? "—"}</b>
                         {p.dare?.doer_name && <> — {p.dare.doer_name}</>}
                       </td>
-                      <td className="mono">{formatSol(BigInt(p.lamports))}</td>
+                      <td className="mono">{padSol(BigInt(p.lamports))}</td>
                       <td>
                         {p.refund_status === "SENT" ? (
                           <span className="stamp stamp-refunded">Refunded in full</span>

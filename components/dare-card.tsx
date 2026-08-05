@@ -4,8 +4,17 @@ import Link from "next/link";
 import { Tote, Therm, fillPct, toteValue } from "@/components/tote";
 import { Clock } from "@/components/clock";
 import { StatusStamp } from "@/components/status-stamp";
-import { formatSol } from "@/lib/format";
+import { formatSol, padSol } from "@/lib/format";
 import type { PublicDare } from "@/lib/dares";
+
+/** What the card foot says once the clock stops mattering. */
+const FOOT_TEXT: Record<string, string> = {
+  IN_REVIEW: "in review",
+  PAID: "paid out",
+  REFUNDING: "refunding",
+  REFUNDED: "refunded",
+  KILLED: "removed",
+};
 
 export function DareCard({ dare }: { dare: PublicDare }) {
   const pot = BigInt(dare.pot);
@@ -19,12 +28,12 @@ export function DareCard({ dare }: { dare: PublicDare }) {
   return (
     <article className="card dare-card">
       <div className="dare-card-top">
-        <span className="dare-cat">{dare.category_emoji} {dare.category_id}</span>
+        <span className="dare-cat">{dare.category_emoji} {dare.category_short}</span>
         <StatusStamp status={dare.status} />
       </div>
       <h3 className="dare-title">{dare.category_label}</h3>
       <p className="dare-detail">{dare.detail || dare.category_blurb}</p>
-      <Tote value={toteValue(pot)} size="sm" />
+      <Tote value={padSol(pot)} size="sm" />
       <div>
         <Therm pct={pct} state={state} />
         <div className="therm-scale">
@@ -38,8 +47,12 @@ export function DareCard({ dare }: { dare: PublicDare }) {
           {dare.doer_name} ·{" "}
           {dare.status === "OPEN" ? (
             <Clock until={dare.funding_ends_at} className="small" />
+          ) : dare.status === "CLOSED" && dare.proof_due_at ? (
+            <span className="mono small muted">
+              proof due <Clock until={dare.proof_due_at} urgentUnderHours={12} className="small" />
+            </span>
           ) : (
-            <span className="mono small muted">settled</span>
+            <span className="mono small muted">{FOOT_TEXT[dare.status] ?? "settled"}</span>
           )}
         </span>
         <Link className="btn btn-sm btn-primary" href={`/d/${dare.id}`}>

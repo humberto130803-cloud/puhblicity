@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listBoardDares, getSettings } from "@/lib/dares";
 import { siteStats } from "@/lib/stats";
-import { formatSol, toteValue } from "@/lib/format";
+import { formatSol, padSol } from "@/lib/format";
 import { Board } from "@/components/board";
 import { Tote, Therm } from "@/components/tote";
 import { Tape, Floaters, Marquee } from "@/components/hero-fx";
@@ -61,7 +61,7 @@ export default async function Home() {
             <Rv className="hero-tote on-field" index={1}>
               <p className="eyebrow">Paid out to doers so far</p>
               <Tote
-                value={toteValue(stats.paidOutTotal)}
+                value={padSol(stats.paidOutTotal)}
                 size="xl"
                 onField
                 countUp

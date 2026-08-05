@@ -48,11 +48,15 @@ export async function runIndexer(): Promise<{ processed: number; credited: numbe
   let credited = 0;
   for (const item of collected) {
     if (!item.err) {
-      const wasCredit = await processVaultTx(item.signature);
-      if (wasCredit) credited++;
+      const result = await processVaultTx(item.signature);
+      // The RPC listed this signature but won't serve the transaction yet
+      // (node lag). STOP without advancing the cursor — advancing here
+      // would skip a real payment forever. Next tick retries.
+      if (result === "not-found") break;
+      if (result === "credited") credited++;
     }
-    // Advance the cursor after EVERY item (including failed txs) so a crash
-    // never reprocesses what's done and never skips what isn't.
+    // Advance the cursor after each handled item (including failed txs) so
+    // a crash never reprocesses what's done and never skips what isn't.
     await db
       .from("puhb_indexer_state")
       .update({ last_processed_signature: item.signature, updated_at: new Date().toISOString() })
@@ -62,14 +66,16 @@ export async function runIndexer(): Promise<{ processed: number; credited: numbe
   return { processed, credited };
 }
 
+export type ProcessResult = "credited" | "ignored" | "not-found";
+
 /**
- * Process one vault transaction. Returns true if a pledge was credited.
- * Also usable directly by the pledge-notify route for instant crediting.
+ * Process one vault transaction. Also used directly by the pledge-notify
+ * route for instant crediting.
  */
 export async function processVaultTx(
   signature: string,
   backerNote: string | null = null
-): Promise<boolean> {
+): Promise<ProcessResult> {
   const db = mustDb();
   const conn = rpc();
 
@@ -77,12 +83,12 @@ export async function processVaultTx(
     commitment: "confirmed",
     maxSupportedTransactionVersion: 0,
   });
-  if (!tx) return false;
+  if (!tx) return "not-found";
   const credit = extractVaultCredit(tx);
-  if (!credit) return false;
+  if (!credit) return "ignored";
 
   // Outgoing (refunds, payouts) — recorded by their own workers. Ignore.
-  if (credit.lamports <= 0n) return false;
+  if (credit.lamports <= 0n) return "ignored";
 
   const dareId = pledgeMemoDareId(credit.memo);
   if (dareId) {
@@ -94,7 +100,9 @@ export async function processVaultTx(
       p_note: backerNote,
     });
     if (error) throw new Error(`credit_pledge ${signature}: ${error.message}`);
-    return data === "CREDITED" || data === "CLOSED" || data === "REFUND_DUE";
+    return data === "CREDITED" || data === "CLOSED" || data === "REFUND_DUE"
+      ? "credited"
+      : "ignored";
   }
 
   if (isFeeMemoFormat(credit.memo)) {
@@ -117,7 +125,7 @@ export async function processVaultTx(
         { onConflict: "signature", ignoreDuplicates: true }
       );
     }
-    return false;
+    return "ignored";
   }
 
   // SOL with no matchable memo (exchange sends strip memos; SPL/NFT deposits
@@ -131,5 +139,5 @@ export async function processVaultTx(
     },
     { onConflict: "signature", ignoreDuplicates: true }
   );
-  return false;
+  return "ignored";
 }

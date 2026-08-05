@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const credited = await processVaultTx(body.signature, note);
-    return Response.json({ ok: true, credited });
+    const result = await processVaultTx(body.signature, note);
+    return Response.json({ ok: true, credited: result === "credited" });
   } catch {
     // The cron indexer will pick it up; tell the client the truth.
     return Response.json({ ok: true, credited: false, deferred: true });

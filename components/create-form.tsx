@@ -110,7 +110,18 @@ export function CreateForm({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not open the dare");
+      if (!res.ok) {
+        // A consumed fee signature must not stay cached — it would loop the
+        // form into the same 409 forever.
+        if (res.status === 409) {
+          try {
+            localStorage.removeItem(FEE_CACHE_KEY);
+          } catch {
+            /* ignore */
+          }
+        }
+        throw new Error(data.error ?? "Could not open the dare");
+      }
 
       try {
         localStorage.removeItem(FEE_CACHE_KEY);

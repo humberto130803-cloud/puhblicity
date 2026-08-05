@@ -132,6 +132,17 @@ export async function POST(request: Request) {
   });
   if (error) {
     if (error.message.includes("posting_fee_sig")) {
+      // Idempotent retry: if the "duplicate" is this wallet's own dare from
+      // an attempt the client thought failed, hand it back as success —
+      // never make someone pay a second fee for a network blip.
+      const { data: existing } = await db
+        .from("puhb_dares")
+        .select("id, doer_wallet, flagged")
+        .eq("posting_fee_sig", body.signature)
+        .maybeSingle();
+      if (existing && existing.doer_wallet === session.pubkey) {
+        return Response.json({ ok: true, id: existing.id, flagged: existing.flagged });
+      }
       return bad(409, "That fee transaction was already used for a dare.");
     }
     return bad(500, "Could not save the dare. Your fee signature is safe — try again with the same one.");

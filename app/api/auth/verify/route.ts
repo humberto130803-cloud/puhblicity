@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
-import { verifySignIn } from "@solana/wallet-standard-util";
-import type { SolanaSignInOutput } from "@solana/wallet-standard-features";
+import {
+  parseSignInMessage,
+  verifyMessageSignature,
+} from "@solana/wallet-standard-util";
 import bs58 from "bs58";
 import { createSession } from "@/lib/session";
 import { NONCE_COOKIE, SIWS_STATEMENT, type VerifyPayload } from "@/lib/siws";
@@ -11,8 +13,18 @@ function bad(status: number, error: string) {
 
 /**
  * Verifies a Sign-In-With-Solana response and opens a session.
- * Checks, in order: nonce matches our httpOnly cookie, domain matches this
- * host, statement matches our Terms text exactly, ed25519 signature verifies.
+ *
+ * We deliberately do NOT use `verifySignIn()` from wallet-standard-util.
+ * That helper re-derives the message from the challenge we sent and requires
+ * every field to match what was signed — including `uri` and `chainId`,
+ * which wallets add on their own. Phantom does exactly that, so sign-in
+ * failed for every user with a valid signature, and it failed on a field
+ * comparison before any cryptography ran.
+ *
+ * Instead: verify the signature over the bytes the wallet actually signed,
+ * then parse those bytes and enforce the four things we care about. Extra
+ * fields a wallet chose to include are ignored — they can't weaken a
+ * signature we've already verified.
  */
 export async function POST(request: Request) {
   let payload: VerifyPayload;
@@ -22,21 +34,15 @@ export async function POST(request: Request) {
     return bad(400, "Invalid JSON body");
   }
 
-  const { input, account, signature, signedMessage } = payload;
-  if (!input || !account || !signature || !signedMessage) {
+  const { account, signature, signedMessage } = payload;
+  if (!account || !signature || !signedMessage) {
     return bad(400, "Missing fields");
   }
 
   const store = await cookies();
   const expectedNonce = store.get(NONCE_COOKIE)?.value;
-  if (!expectedNonce) return bad(401, "Nonce expired — try again");
-  if (input.nonce !== expectedNonce) return bad(401, "Nonce mismatch");
-
-  const host = new URL(request.url).host;
-  if (input.domain !== host) return bad(401, "Domain mismatch");
-  if (input.statement !== SIWS_STATEMENT) return bad(401, "Statement mismatch");
-  if (input.address && input.address !== account) {
-    return bad(401, "Address mismatch");
+  if (!expectedNonce) {
+    return bad(401, "That sign-in request expired. Tap connect and try again.");
   }
 
   let publicKey: Uint8Array;
@@ -50,26 +56,44 @@ export async function POST(request: Request) {
     return bad(400, "Invalid base58 encoding");
   }
   if (publicKey.length !== 32) return bad(400, "Invalid public key");
+  if (sigBytes.length !== 64) return bad(400, "Invalid signature length");
 
-  const output: SolanaSignInOutput = {
-    account: {
-      address: account,
-      publicKey,
-      chains: [],
-      features: [],
-    },
-    signature: sigBytes,
-    signedMessage: msgBytes,
-  };
-
-  let verified = false;
+  // 1. The cryptography: did this key sign these exact bytes?
+  let signatureValid = false;
   try {
-    verified = verifySignIn(input, output);
+    signatureValid = verifyMessageSignature({
+      message: msgBytes,
+      signedMessage: msgBytes,
+      signature: sigBytes,
+      publicKey,
+    });
   } catch {
-    verified = false;
+    signatureValid = false;
   }
-  if (!verified) return bad(401, "Signature verification failed");
+  if (!signatureValid) return bad(401, "Signature verification failed");
 
+  // 2. What did they actually sign?
+  const parsed = parseSignInMessage(msgBytes);
+  if (!parsed) return bad(400, "Could not read the signed message");
+
+  // 3. Our four requirements.
+  const host = new URL(request.url).host;
+  if (parsed.domain !== host) {
+    // Anti-phishing: a signature farmed on another site is useless here.
+    return bad(401, "This signature was made for a different site");
+  }
+  if (parsed.nonce !== expectedNonce) {
+    // Replay protection: it must answer the challenge we just issued.
+    return bad(401, "Sign-in challenge mismatch — try again");
+  }
+  if ((parsed.statement ?? "").trim() !== SIWS_STATEMENT.trim()) {
+    return bad(401, "The signed terms don't match ours");
+  }
+  if (parsed.address !== account) {
+    return bad(401, "Signed by a different wallet than the one claimed");
+  }
+
+  // Challenge consumed — burn the nonce and open the session.
   store.delete(NONCE_COOKIE);
   await createSession(account);
 

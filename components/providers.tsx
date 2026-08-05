@@ -19,6 +19,7 @@ import type { SolanaSignInInput } from "@solana/wallet-standard-features";
 import { createSignInMessageText } from "@solana/wallet-standard-util";
 import bs58 from "bs58";
 import { WalletHandoff } from "@/components/wallet-handoff";
+import { AuthError } from "@/components/auth-error";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const ENDPOINT =
@@ -152,6 +153,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={value}>
       {children}
       {handoff && <WalletHandoff onClose={() => setHandoff(false)} />}
+      {error && <AuthError error={error} onDismiss={() => setError(null)} />}
     </AuthContext.Provider>
   );
 }

@@ -57,6 +57,12 @@ export function CreateForm({
 
   async function submit() {
     setError(null);
+    // Same guard as backing: a live session doesn't guarantee a wallet that
+    // can sign, especially on a phone browser.
+    if (!wallet.connected || !wallet.publicKey) {
+      connect();
+      return;
+    }
     if (!categoryId) return setError("Pick a dare from the menu.");
     if (doerName.trim().length < 2) return setError("Your name goes on the board — 2 to 24 characters.");
     const target = parseSolToLamports(targetSol);

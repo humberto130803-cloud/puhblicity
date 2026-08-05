@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { payVault } from "@/components/solana-tx";
+import { useConnectOrSignIn } from "@/components/use-connect";
 import { formatSol, parseSolToLamports } from "@/lib/format";
 import type { PublicDare } from "@/lib/dares";
 
@@ -27,6 +28,7 @@ export function BackModal({
 }) {
   const wallet = useWallet();
   const { connection } = useConnection();
+  const connectOrSignIn = useConnectOrSignIn();
   const pot = BigInt(dare.pot);
   const target = BigInt(dare.target);
   const toGo = target > pot ? target - pot : 0n;
@@ -44,6 +46,14 @@ export function BackModal({
 
   async function submit() {
     setError(null);
+    // A session cookie outlives a wallet connection — and on a phone the
+    // wallet may never have been reachable in this browser at all. Route
+    // them to the right place instead of failing at signing time.
+    if (!wallet.connected || !wallet.publicKey) {
+      onClose();
+      connectOrSignIn();
+      return;
+    }
     if (lamports === null) {
       setError("That amount doesn't parse. Plain numbers, like 0.1.");
       return;

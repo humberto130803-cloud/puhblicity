@@ -18,6 +18,7 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import type { SolanaSignInInput } from "@solana/wallet-standard-features";
 import { createSignInMessageText } from "@solana/wallet-standard-util";
 import bs58 from "bs58";
+import { WalletHandoff } from "@/components/wallet-handoff";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const ENDPOINT =
@@ -37,6 +38,8 @@ type AuthContextValue = {
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Ask the user to continue inside a wallet's in-app browser (mobile). */
+  requestWalletApp: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -137,12 +140,20 @@ function AuthProvider({ children }: { children: ReactNode }) {
     await wallet.disconnect().catch(() => {});
   }, [wallet]);
 
+  const [handoff, setHandoff] = useState(false);
+  const requestWalletApp = useCallback(() => setHandoff(true), []);
+
   const value = useMemo(
-    () => ({ session, isAdmin, signingIn, error, signIn, signOut }),
-    [session, isAdmin, signingIn, error, signIn, signOut]
+    () => ({ session, isAdmin, signingIn, error, signIn, signOut, requestWalletApp }),
+    [session, isAdmin, signingIn, error, signIn, signOut, requestWalletApp]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {handoff && <WalletHandoff onClose={() => setHandoff(false)} />}
+    </AuthContext.Provider>
+  );
 }
 
 export default function Providers({ children }: { children: ReactNode }) {

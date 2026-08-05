@@ -377,6 +377,43 @@ button{cursor:pointer}
 .wallet-adapter-modal-list-more{color:var(--field)!important}
 .wallet-adapter-modal-button-close{background:var(--paper)!important}
 
+/* ============================================================
+   INSTALLED APP
+   With viewport-fit:cover there is no browser chrome to protect
+   the content, so the notch and the home indicator have to be
+   paid for explicitly. These are no-ops in a normal tab.
+   ============================================================ */
+.topbar{padding-top:env(safe-area-inset-top)}
+.foot{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+.wrap,.wrap-narrow{
+  padding-left:max(24px,env(safe-area-inset-left));
+  padding-right:max(24px,env(safe-area-inset-right))
+}
+@media (display-mode:standalone){
+  /* No pull-to-refresh bounce revealing white behind the field. */
+  html{background:var(--ink);overscroll-behavior-y:none}
+  body{background:var(--paper)}
+}
+
+/* install prompt */
+.install-hint{
+  position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));
+  z-index:120;display:flex;align-items:center;gap:12px;
+  background:var(--white);border:2px solid var(--ink);border-radius:var(--radius);
+  box-shadow:6px 6px 0 var(--field);padding:12px 14px;
+  max-width:520px;margin:0 auto;animation:hintIn .45s var(--ease) both
+}
+@keyframes hintIn{from{transform:translateY(120%);opacity:0}to{transform:none;opacity:1}}
+.install-hint__icon{border-radius:8px;border:2px solid var(--ink);flex:none}
+.install-hint__body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.install-hint__body b{font-size:14px;line-height:1.2}
+.install-hint__body span{font-size:12.5px;color:var(--slate);line-height:1.3}
+.install-hint__x{
+  border:0;background:transparent;color:var(--slate);font-size:15px;
+  padding:4px 2px;flex:none;line-height:1
+}
+.install-hint__x:hover{color:var(--flare)}
+
 @media (max-width:960px){
   .hero-grid,.detail-grid{grid-template-columns:1fr;gap:34px}
   .grid{grid-template-columns:repeat(2,1fr)}

@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Rv } from "@/components/reveal";
+import { Clock } from "@/components/clock";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
-import { formatSol, remaining, shortWallet, ago } from "@/lib/format";
+import { formatSol, shortWallet, ago } from "@/lib/format";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+const reviewDeadline = (d: any) =>
+  d.proof_submitted_at
+    ? new Date(new Date(d.proof_submitted_at).getTime() + 24 * 3600_000).toISOString()
+    : null;
 
 export default function AdminPage() {
   const { session, isAdmin } = useAuth();
@@ -18,7 +25,7 @@ export default function AdminPage() {
     fetch("/api/admin/overview")
       .then((r) => r.json())
       .then(setData)
-      .catch(() => setMsg("Could not load overview"));
+      .catch(() => setMsg("Could not load the overview"));
   }, []);
 
   useEffect(() => {
@@ -46,168 +53,223 @@ export default function AdminPage() {
 
   if (!session || !isAdmin) {
     return (
-      <div className="wrap" style={{ padding: "40px 16px" }}>
-        <div className="panel" style={{ padding: 24, maxWidth: 480 }}>
-          <p style={{ marginBottom: 12 }}>Admin only. Sign in with the admin wallet.</p>
-          <button className="btn" onClick={connect}>Connect</button>
+      <div className="wrap" style={{ padding: "44px 24px 90px" }}>
+        <div className="card card-pad" style={{ maxWidth: 480 }}>
+          <p className="h3" style={{ marginBottom: 6 }}>The back of the board</p>
+          <p className="muted small" style={{ marginBottom: 16 }}>
+            Admin only. Sign in with the admin wallet.
+          </p>
+          <button className="btn btn-dark" onClick={connect}><span>Connect</span></button>
         </div>
       </div>
     );
   }
 
-  const reviewDeadline = (d: any) =>
-    d.proof_submitted_at
-      ? remaining(new Date(new Date(d.proof_submitted_at).getTime() + 24 * 3600_000).toISOString())
-      : "—";
+  const shortVault = data ? Number(BigInt(data.vaultBalance !== "rpc-error" ? data.vaultBalance : "0")) <
+    Number(BigInt(data.refundsOwed ?? "0")) : false;
 
   return (
-    <div className="wrap" style={{ paddingBottom: 60 }}>
-      <section className="hero" style={{ paddingBottom: 8 }}>
-        <p className="eyebrow">Operator panel</p>
-        <h1 className="display" style={{ fontSize: "clamp(28px, 5vw, 46px)" }}>
-          The back of the board
-        </h1>
-      </section>
-
-      {msg && <div className="notice" role="status">{msg}</div>}
-
+    <div className="wrap" style={{ padding: "36px 24px 90px" }}>
       {data && (
         <>
-          <section className="admin-section panel" style={{ padding: 16 }}>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
-              <span className="mono">
-                Vault: {data.vaultBalance === "rpc-error" ? "RPC error" : `${formatSol(BigInt(data.vaultBalance))} SOL`}
-              </span>
-              <span className="mono">Open pot owed: {formatSol(BigInt(data.openPot))} SOL</span>
-              <span className="mono">{shortWallet(data.vaultPubkey)}</span>
-              <button
-                className={`btn ${data.paused ? "btn--jade" : "btn--flare"}`}
-                onClick={() => act({ action: data.paused ? "unpause" : "pause" })}
-              >
-                {data.paused ? "UNPAUSE the site" : "PAUSE the site"}
-              </button>
+          <Rv className="statgrid" style={{ marginBottom: 16 }}>
+            <div className="stat">
+              <span className="eyebrow">Vault balance</span>
+              <b>{data.vaultBalance === "rpc-error" ? "RPC ✕" : formatSol(BigInt(data.vaultBalance))}</b>
             </div>
-            {BigInt(data.vaultBalance !== "rpc-error" ? data.vaultBalance : 0) <
-              BigInt(data.openPot) && (
-              <div className="notice notice--error" style={{ marginTop: 10 }}>
-                Vault holds less than the open pot. Top it up NOW — refunds
-                fail without it.
-              </div>
-            )}
-          </section>
+            <div className="stat">
+              <span className="eyebrow">Open pot liability</span>
+              <b>{formatSol(BigInt(data.openPot))}</b>
+            </div>
+            <div className="stat">
+              <span className="eyebrow">Owed in refunds</span>
+              <b style={{ color: BigInt(data.refundsOwed ?? "0") > 0n ? "var(--flare)" : undefined }}>
+                {formatSol(BigInt(data.refundsOwed ?? "0"))}
+              </b>
+            </div>
+            <div className="stat">
+              <span className="eyebrow">Fees earned</span>
+              <b style={{ color: "var(--jade)" }}>{formatSol(BigInt(data.feesEarned ?? "0"))}</b>
+            </div>
+          </Rv>
 
-          <section className="admin-section">
-            <p className="eyebrow">Proofs awaiting review — 24h clock runs, then auto-refund</p>
-            {data.inReview.length === 0 && <p style={{ color: "var(--slate)", marginTop: 6 }}>Nothing waiting.</p>}
-            {data.inReview.map((d: any) => (
-              <div key={d.id} className="admin-card panel">
-                <strong>{d.category_emoji} {d.category_label}</strong> — {d.doer_name} ({d.id})
-                <div className="mono" style={{ fontSize: 12, color: "var(--slate)" }}>
-                  pot {formatSol(BigInt(d.pot))} SOL · review closes in {reviewDeadline(d)}
-                  {d.proof_note && <> · note: {d.proof_note}</>}
-                </div>
-                <div className="admin-actions">
-                  <button className="btn" onClick={() => void watchProof(d.id)}>Watch proof</button>
-                  <button className="btn btn--jade" onClick={() => act({ action: "approve", dareId: d.id })}>
-                    Approve & pay
-                  </button>
-                  <button
-                    className="btn btn--flare"
-                    onClick={() => {
-                      const reason = prompt("Rejection reason (the doer sees this):");
-                      if (reason) void act({ action: "reject", dareId: d.id, reason });
-                    }}
-                  >
-                    Reject & refund
-                  </button>
-                </div>
-              </div>
-            ))}
-          </section>
+          <Rv style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 24 }}>
+            <button
+              className={`btn btn-sm ${data.paused ? "btn-dark" : "btn-primary"}`}
+              onClick={() => act({ action: data.paused ? "unpause" : "pause" })}
+            >
+              <span>{data.paused ? "UNPAUSE the site" : "Pause the site"}</span>
+            </button>
+            <span className="chip mono">{shortWallet(data.vaultPubkey)}</span>
+            {data.paused && <span className="stamp stamp-killed">Site paused</span>}
+          </Rv>
 
-          <section className="admin-section">
-            <p className="eyebrow">Flagged dares — clear before they hit the board</p>
-            {data.flagged.length === 0 && <p style={{ color: "var(--slate)", marginTop: 6 }}>Queue empty.</p>}
-            {data.flagged.map((d: any) => (
-              <div key={d.id} className="admin-card panel">
-                <strong>{d.category_emoji} {d.category_label}</strong> — {d.doer_name} ({d.id})
-                <div style={{ fontSize: 13, margin: "4px 0" }}>&ldquo;{d.detail}&rdquo;</div>
-                <div className="mono" style={{ fontSize: 12, color: "var(--slate)" }}>
-                  {d.doer_wallet} · target {formatSol(BigInt(d.target))} SOL
-                  {d.doer_instagram && <> · @{d.doer_instagram}</>}
-                </div>
-                <div className="admin-actions">
-                  <button className="btn btn--jade" onClick={() => act({ action: "clear_flag", dareId: d.id })}>
-                    Clear — put it on the board
-                  </button>
-                  <button
-                    className="btn btn--flare"
-                    onClick={() => {
-                      const reason = prompt("Kill reason:") ?? "rule break";
-                      void act({ action: "kill", dareId: d.id, reason });
-                    }}
-                  >
-                    Kill & refund
-                  </button>
-                </div>
-              </div>
-            ))}
-          </section>
+          {shortVault && (
+            <div className="notice" role="alert" style={{ marginBottom: 20 }}>
+              <b>The vault holds less than what&apos;s owed in refunds.</b> Top it
+              up NOW — refunds fail without it.
+            </div>
+          )}
 
-          <section className="admin-section">
-            <p className="eyebrow">Failed refunds — fix the cause, then retry</p>
-            {data.failedRefunds.length === 0 && <p style={{ color: "var(--slate)", marginTop: 6 }}>None. Good.</p>}
-            {data.failedRefunds.map((p: any) => (
-              <div key={p.signature} className="admin-card panel">
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {formatSol(BigInt(p.lamports))} SOL → {p.backer_wallet} (dare {p.dare_id})
-                </span>
-                <div className="admin-actions">
-                  <button className="btn btn--jade" onClick={() => act({ action: "retry_refund", pledgeSignature: p.signature })}>
-                    Retry
-                  </button>
-                </div>
-              </div>
-            ))}
-          </section>
+          {data.inReview.length > 0 && (
+            <div className="notice" style={{ marginBottom: 32 }}>
+              <b>{data.inReview.length} proof{data.inReview.length === 1 ? "" : "s"} waiting.</b>{" "}
+              Anything unreviewed for 24 hours auto-refunds to backers. The
+              nearest clock is at{" "}
+              {reviewDeadline(data.inReview[0]) && (
+                <Clock until={reviewDeadline(data.inReview[0])!} urgentUnderHours={6} />
+              )}.
+            </div>
+          )}
 
-          <section className="admin-section">
-            <p className="eyebrow">Orphan payments — SOL that arrived with no tag</p>
-            {data.orphans.length === 0 && <p style={{ color: "var(--slate)", marginTop: 6 }}>None.</p>}
-            {data.orphans.map((o: any) => (
-              <div key={o.signature} className="admin-card panel">
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {formatSol(BigInt(o.lamports))} SOL from {o.from_wallet ?? "?"} · {ago(o.seen_at)}
-                  {o.memo && <> · memo: {o.memo}</>}
-                </span>
-                <div style={{ fontSize: 12, color: "var(--slate)" }}>{o.note}</div>
-                <div className="admin-actions">
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      const reason = prompt("Resolution note:") ?? "resolved";
-                      void act({ action: "resolve_orphan", orphanSignature: o.signature, reason });
-                    }}
-                  >
-                    Mark resolved
-                  </button>
-                </div>
-              </div>
-            ))}
-          </section>
+          <Rv as="p" className="eyebrow" style={{ marginBottom: 13 }}>Proofs to review</Rv>
+          <Rv className="card" style={{ overflow: "hidden", marginBottom: 32 }}>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr><th>Dare</th><th>Doer</th><th>Pot</th><th>Auto-refunds in</th><th>Proof</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {data.inReview.length === 0 && (
+                    <tr><td colSpan={6} className="muted">Nothing waiting. Good.</td></tr>
+                  )}
+                  {data.inReview.map((d: any) => (
+                    <tr key={d.id}>
+                      <td><b>{d.category_label}</b><br /><span className="small muted mono">{d.id}</span></td>
+                      <td>{d.doer_name}<br /><span className="small muted mono">{shortWallet(d.doer_wallet)}</span></td>
+                      <td className="mono">{formatSol(BigInt(d.pot))}</td>
+                      <td>{reviewDeadline(d) && <Clock until={reviewDeadline(d)!} urgentUnderHours={6} />}</td>
+                      <td>
+                        <button className="btn btn-sm" onClick={() => void watchProof(d.id)}>
+                          <span>▶ Watch</span>
+                        </button>
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => act({ action: "approve", dareId: d.id })}
+                        >
+                          <span>Approve &amp; pay {formatSol((BigInt(d.pot) * 9000n) / 10000n)}</span>
+                        </button>{" "}
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            const reason = prompt("Rejection reason (the doer sees this):");
+                            if (reason) void act({ action: "reject", dareId: d.id, reason });
+                          }}
+                        >
+                          <span>Reject</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Rv>
+
+          <Rv as="p" className="eyebrow" style={{ marginBottom: 13 }}>New dares waiting to clear</Rv>
+          <Rv className="card" style={{ overflow: "hidden", marginBottom: 32 }}>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr><th>Dare</th><th>Specifics</th><th>Target</th><th>Wallet</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {data.flagged.length === 0 && (
+                    <tr><td colSpan={5} className="muted">Queue empty.</td></tr>
+                  )}
+                  {data.flagged.map((d: any) => (
+                    <tr key={d.id}>
+                      <td><b>{d.category_label}</b><br /><span className="small muted mono">{d.id} · {d.doer_name}</span></td>
+                      <td className="small">{d.detail || <span className="muted">—</span>}</td>
+                      <td className="mono">{formatSol(BigInt(d.target))}</td>
+                      <td className="mono small">{shortWallet(d.doer_wallet)}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button className="btn btn-sm btn-primary" onClick={() => act({ action: "clear_flag", dareId: d.id })}>
+                          <span>Clear</span>
+                        </button>{" "}
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            const reason = prompt("Kill reason:") ?? "rule break";
+                            void act({ action: "kill", dareId: d.id, reason });
+                          }}
+                        >
+                          <span>Kill &amp; refund</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Rv>
+
+          <Rv as="p" className="eyebrow" style={{ marginBottom: 13 }}>Needs a human</Rv>
+          <Rv className="card" style={{ overflow: "hidden" }}>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr><th>What</th><th>Detail</th><th>Amount</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {data.failedRefunds.length === 0 && data.orphans.length === 0 && (
+                    <tr><td colSpan={4} className="muted">Nothing. Sleep well.</td></tr>
+                  )}
+                  {data.failedRefunds.map((p: any) => (
+                    <tr key={p.signature}>
+                      <td><b>Failed refund</b><br /><span className="small muted">{p.refund_attempts} attempts</span></td>
+                      <td className="mono small">{shortWallet(p.backer_wallet)} · {p.dare_id}</td>
+                      <td className="mono">{formatSol(BigInt(p.lamports))}</td>
+                      <td>
+                        <button className="btn btn-sm btn-primary" onClick={() => act({ action: "retry_refund", pledgeSignature: p.signature })}>
+                          <span>Retry by hand</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {data.orphans.map((o: any) => (
+                    <tr key={o.signature}>
+                      <td><b>Unmatched payment</b><br /><span className="small muted">{o.memo ? `memo: ${o.memo}` : "No memo — likely sent from an exchange"}</span></td>
+                      <td className="mono small">{shortWallet(o.from_wallet ?? "?")} · {ago(o.seen_at)} ago</td>
+                      <td className="mono">{formatSol(BigInt(o.lamports))}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button className="btn btn-sm" onClick={() => act({ action: "refund_orphan", orphanSignature: o.signature })}>
+                          <span>Send it back</span>
+                        </button>{" "}
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => {
+                            const reason = prompt("Resolution note:") ?? "resolved";
+                            void act({ action: "resolve_orphan", orphanSignature: o.signature, reason });
+                          }}
+                        >
+                          <span>Dismiss</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Rv>
         </>
       )}
 
+      {msg && (
+        <div className="notice notice-cool" role="status" style={{ marginTop: 20 }}>{msg}</div>
+      )}
+
       {proofUrl && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(20,32,46,0.8)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20,
-          }}
-          onClick={() => setProofUrl(null)}
-        >
+        <div className="modal-bg" onClick={(e) => { if (e.target === e.currentTarget) setProofUrl(null); }}>
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <video src={proofUrl} controls autoPlay style={{ maxWidth: "90vw", maxHeight: "85vh", border: "3px solid #fff" }} />
+          <video
+            src={proofUrl}
+            controls
+            autoPlay
+            style={{ maxWidth: "min(90vw, 900px)", maxHeight: "85vh", border: "3px solid #fff", margin: "auto" }}
+          />
         </div>
       )}
     </div>

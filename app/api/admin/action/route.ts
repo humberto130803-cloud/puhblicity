@@ -3,7 +3,8 @@ import { getSession, isAdminPubkey } from "@/lib/session";
 import { startRefunding, logAction } from "@/lib/state";
 import { approveAndPay } from "@/lib/settle";
 import { isDareId } from "@/lib/ids";
-import { isLikelySignature } from "@/lib/rpc";
+import { isLikelySignature, isLikelyPubkey } from "@/lib/rpc";
+import { sendFromVault, TxNeverLanded } from "@/lib/vault";
 
 function bad(status: number, error: string) {
   return Response.json({ error }, { status });
@@ -118,6 +119,55 @@ export async function POST(request: Request) {
       if (!data?.length) return bad(409, "Pledge is not FAILED");
       await logAction(actor, "refund_retry", null, { pledge: body.pledgeSignature });
       return Response.json({ ok: true });
+    }
+
+    case "refund_orphan": {
+      // Send an unmatched payment back where it came from. Claimed by the
+      // resolved flag before signing, so a double-click cannot double-send.
+      if (!isLikelySignature(body.orphanSignature)) return bad(400, "Bad signature");
+      const { data: orphan } = await db
+        .from("puhb_orphan_payments")
+        .select("*")
+        .eq("signature", body.orphanSignature)
+        .maybeSingle();
+      if (!orphan) return bad(404, "No such orphan");
+      if (!isLikelyPubkey(orphan.from_wallet)) {
+        return bad(409, "No sender wallet recorded — can't send it back");
+      }
+      const { data: claimed } = await db
+        .from("puhb_orphan_payments")
+        .update({ resolved: true, note: "sending back…" })
+        .eq("signature", body.orphanSignature)
+        .eq("resolved", false)
+        .select("signature");
+      if (!claimed?.length) return bad(409, "Already handled");
+      try {
+        const sig = await sendFromVault(
+          orphan.from_wallet,
+          BigInt(orphan.lamports),
+          `PUHB:ORPHANBACK:${body.orphanSignature.slice(0, 32)}`
+        );
+        await db
+          .from("puhb_orphan_payments")
+          .update({ note: `sent back in full: ${sig}` })
+          .eq("signature", body.orphanSignature);
+        await logAction(actor, "orphan_sent_back", null, { orphan: body.orphanSignature, sig });
+        return Response.json({ ok: true });
+      } catch (e) {
+        if (e instanceof TxNeverLanded) {
+          await db
+            .from("puhb_orphan_payments")
+            .update({ resolved: false, note: "send-back failed — nothing moved, retry" })
+            .eq("signature", body.orphanSignature);
+          return bad(502, "The send didn't land — nothing moved. Try again.");
+        }
+        await db
+          .from("puhb_orphan_payments")
+          .update({ note: "send-back outcome UNKNOWN — check the vault on-chain for memo PUHB:ORPHANBACK before retrying" })
+          .eq("signature", body.orphanSignature);
+        await logAction(actor, "orphan_sendback_unknown", null, { orphan: body.orphanSignature });
+        return bad(502, "Outcome unknown — check the vault history before retrying.");
+      }
     }
 
     case "resolve_orphan": {

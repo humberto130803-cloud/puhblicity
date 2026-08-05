@@ -36,6 +36,20 @@ export function parseSolToLamports(input: string): bigint | null {
   return whole * LAMPORTS_PER_SOL + frac;
 }
 
+/** Format a bigint for the tote: "1.35" — always two+ decimals so the
+ *  plate count stays stable while a pot climbs. */
+export function toteValue(lamports: bigint): string {
+  const s = formatSol(lamports);
+  const [w, f = ""] = s.split(".");
+  return `${w}.${(f + "00").slice(0, Math.max(2, f.length))}`;
+}
+
+/** Fill percentage from bigint pot/target, display-only. */
+export function fillPct(pot: bigint, target: bigint): number {
+  if (target <= 0n) return 0;
+  return Math.min(100, (Number(pot) / Number(target)) * 100);
+}
+
 /** Wallet, 4 + 4: "8sVa…FxQN". Monospace at the call site, always. */
 export const shortWallet = (w: string) =>
   w && w.length > 10 ? `${w.slice(0, 4)}…${w.slice(-4)}` : (w ?? "");

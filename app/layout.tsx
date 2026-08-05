@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Anton, Archivo, DM_Mono } from "next/font/google";
 import Providers from "@/components/providers";
-import SiteHeader from "@/components/site-header";
+import Chrome from "@/components/chrome";
 import SiteFooter from "@/components/site-footer";
+import { ConfettiCanvas } from "@/components/confetti";
 import "./globals.css";
 
 const anton = Anton({
@@ -23,7 +24,7 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "PUHBLICITY — name your price. Do the thing.",
   description:
-    "A public board where people crowdfund each other's small, self-inflicted, funny acts. Post a dare, set a target in SOL, and let the internet fill the bar.",
+    "You say what you'll do. The internet decides what it's worth. Hit your target and you're paid — miss it and every backer gets their SOL back, all of it.",
 };
 
 export default function RootLayout({
@@ -33,7 +34,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${anton.variable} ${archivo.variable} ${dmMono.variable}`}>
         <Providers>
-          <SiteHeader />
+          <ConfettiCanvas />
+          <Chrome />
           <main>{children}</main>
           <SiteFooter />
         </Providers>

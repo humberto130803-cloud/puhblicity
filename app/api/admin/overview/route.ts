@@ -17,7 +17,7 @@ export async function GET() {
   }
   const db = mustDb();
 
-  const [inReview, flagged, failedRefunds, orphans, settings, openPot] =
+  const [inReview, flagged, failedRefunds, orphans, settings, openPot, allDares, owedRefunds] =
     await Promise.all([
       db
         .from("puhb_dares")
@@ -41,7 +41,17 @@ export async function GET() {
         .order("seen_at", { ascending: false }),
       getSettings(),
       db.rpc("puhb_open_pot_total"),
+      db.from("puhb_dares").select("status, pot_lamports"),
+      db.from("puhb_pledges").select("lamports").in("refund_status", ["DUE", "SENDING", "FAILED"]),
     ]);
+
+  // Fees earned = every posting fee + the 10% cut on every paid dare.
+  let feesEarned = BigInt((allDares.data?.length ?? 0)) * 20_000_000n;
+  for (const d of allDares.data ?? []) {
+    if (d.status === "PAID") feesEarned += BigInt(d.pot_lamports) / 10n;
+  }
+  let refundsOwed = 0n;
+  for (const p of owedRefunds.data ?? []) refundsOwed += BigInt(p.lamports);
 
   let vault = "0";
   try {
@@ -66,6 +76,8 @@ export async function GET() {
     paused: settings.paused,
     maxTotalOpenPot: settings.max_total_open_pot,
     openPot: String(openPot.data ?? 0),
+    refundsOwed: refundsOwed.toString(),
+    feesEarned: feesEarned.toString(),
     vaultBalance: vault,
     vaultPubkey: settings.vault_pubkey,
   });

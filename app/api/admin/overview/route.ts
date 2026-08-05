@@ -17,7 +17,9 @@ export async function GET() {
   }
   const db = mustDb();
 
-  const [inReview, flagged, failedRefunds, orphans, settings, openPot, allDares, owedRefunds] =
+  // Order here must match the array below exactly — a mismatch silently
+  // hands one dataset to the wrong name.
+  const [inReview, flagged, failedRefunds, live, orphans, settings, openPot, allDares, owedRefunds] =
     await Promise.all([
       db
         .from("puhb_dares")
@@ -34,6 +36,15 @@ export async function GET() {
         .from("puhb_pledges")
         .select("*")
         .eq("refund_status", "FAILED"),
+      // Every live dare, cleared or not. Without this a dare that's already
+      // on the board can't be removed from anywhere in the UI — the exact
+      // situation you need a kill switch for.
+      db
+        .from("puhb_dares")
+        .select("*, puhb_categories(label, short_label, emoji, blurb)")
+        .in("status", ["OPEN", "CLOSED"])
+        .eq("flagged", false)
+        .order("created_at", { ascending: false }),
       db
         .from("puhb_orphan_payments")
         .select("*")
@@ -68,6 +79,11 @@ export async function GET() {
       proof_path: d.proof_path,
     })),
     flagged: (flagged.data ?? []).map((d) => ({
+      ...toPublicDare(d),
+      doer_wallet: d.doer_wallet,
+      doer_instagram: d.doer_instagram,
+    })),
+    live: (live.data ?? []).map((d) => ({
       ...toPublicDare(d),
       doer_wallet: d.doer_wallet,
       doer_instagram: d.doer_instagram,

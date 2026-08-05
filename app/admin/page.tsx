@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Rv } from "@/components/reveal";
 import { Clock } from "@/components/clock";
+import { StatusStamp } from "@/components/status-stamp";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
 import { formatSol, padSol, shortWallet, ago } from "@/lib/format";
@@ -217,6 +218,57 @@ export default function AdminPage() {
                           onClick={() => {
                             const reason = prompt("Kill reason:") ?? "rule break";
                             void act({ action: "kill", dareId: d.id, reason });
+                          }}
+                        >
+                          <span>Kill &amp; refund</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Rv>
+
+          <Rv as="p" className="eyebrow" style={{ marginBottom: 13 }}>
+            On the board now
+          </Rv>
+          <Rv className="card" style={{ overflow: "hidden", marginBottom: 32 }}>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr><th>Dare</th><th>Doer</th><th>Pot</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {(data.live ?? []).length === 0 && (
+                    <tr><td colSpan={5} className="muted">Board is empty.</td></tr>
+                  )}
+                  {(data.live ?? []).map((d: any) => (
+                    <tr key={d.id}>
+                      <td>
+                        <b>{d.category_label}</b><br />
+                        <span className="small muted mono">{d.id}</span>
+                      </td>
+                      <td>
+                        {d.doer_name}<br />
+                        <span className="small muted mono">{shortWallet(d.doer_wallet)}</span>
+                      </td>
+                      <td className="mono">
+                        {padSol(BigInt(d.pot))} / {padSol(BigInt(d.target))}
+                        <br /><span className="small muted">{d.backer_count} backers</span>
+                      </td>
+                      <td><StatusStamp status={d.status} /></td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <a className="btn btn-sm btn-ghost" href={`/d/${d.id}`} target="_blank" rel="noopener noreferrer">
+                          <span>Open</span>
+                        </a>{" "}
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => {
+                            const reason = prompt(
+                              `Kill "${d.category_label}" and refund all ${d.backer_count} backer(s) in full?\n\nReason:`
+                            );
+                            if (reason) void act({ action: "kill", dareId: d.id, reason });
                           }}
                         >
                           <span>Kill &amp; refund</span>

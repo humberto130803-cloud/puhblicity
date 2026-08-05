@@ -1,0 +1,15 @@
+# deps / build
+node_modules/
+.next/
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# env — the vault hot key lives in .env.local. NEVER commit it.
+.env
+.env.*
+
+# vault keypair backups
+vault-*.json
+
+.vercel
+.DS_Store

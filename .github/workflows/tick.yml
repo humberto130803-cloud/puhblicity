@@ -1,0 +1,19 @@
+# The settlement heartbeat's floor. GitHub cron is best-effort (typically
+# 5–15 min); page traffic runs an opportunistic tick between hits (lib/tick.ts)
+# and pledge crediting is instant via /api/pledges/notify. This exists so
+# deadlines and refunds still process when nobody is looking.
+name: tick
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: hit the tick endpoint
+        run: |
+          curl -fsS --max-time 55 \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "https://puhblicity.vercel.app/api/cron/tick"

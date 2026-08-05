@@ -1,0 +1,31 @@
+{
+  "name": "puhblicity",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-standard-features": "^1.4.0",
+    "@solana/wallet-standard-util": "^1.1.3",
+    "@solana/web3.js": "^1.98.4",
+    "@supabase/supabase-js": "^2.110.8",
+    "bs58": "^6.0.0",
+    "jose": "^6.2.4",
+    "next": "16.2.12",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "pg": "^8.22.0",
+    "typescript": "^5"
+  }
+}

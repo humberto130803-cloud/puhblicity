@@ -40,6 +40,11 @@ export type PublicDare = {
   payout_signature: string | null;
   reject_reason: string | null;
   has_proof: boolean;
+  /** While set and in the future, anyone can watch the proof. */
+  proof_public_until: string | null;
+  /** Set once the file has actually been deleted. */
+  proof_deleted_at: string | null;
+  verified: boolean;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,6 +73,9 @@ export function toPublicDare(d: any): PublicDare {
     payout_signature: d.payout_signature,
     reject_reason: d.reject_reason,
     has_proof: !!d.proof_path,
+    proof_public_until: d.proof_public_until ?? null,
+    proof_deleted_at: d.proof_deleted_at ?? null,
+    verified: !!d.verified,
   };
 }
 

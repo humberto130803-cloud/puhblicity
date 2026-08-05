@@ -9,7 +9,23 @@ import { useConnectOrSignIn } from "@/components/use-connect";
 import { payVault } from "@/components/solana-tx";
 import { parseSolToLamports } from "@/lib/format";
 
-type Category = { id: string; label: string; emoji: string; blurb: string };
+type Category = {
+  id: string;
+  label: string;
+  emoji: string;
+  blurb: string;
+  group_label: string;
+};
+
+/** Order the groups read in, rather than alphabetically. */
+const GROUP_ORDER = ["Nerve", "Looks", "Taste", "Body", "Online"];
+const GROUP_BLURB: Record<string, string> = {
+  Nerve: "Strangers have to be there. That's the whole difficulty.",
+  Looks: "You change something and live with it for a while.",
+  Taste: "One serving. Unpleasant, never unsafe.",
+  Body: "Short, measurable, and visibly hard.",
+  Online: "The screenshot is the proof.",
+};
 
 const TARGET_PRESETS = ["0.25", "0.50", "1.00", "2.50", "5.00"];
 const WINDOWS = [
@@ -146,25 +162,36 @@ export function CreateForm({
 
       <Rv className="field" style={{ marginTop: 34 }}>
         <span className="label">The dare</span>
-        <div className="catgrid" role="group" aria-label="Dare menu">
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className="cat"
-              aria-pressed={categoryId === c.id}
-              onClick={() => setCategoryId(c.id)}
-            >
-              <em>{c.emoji}</em>
-              <b>{c.label}</b>
-              <i>{c.blurb}</i>
-            </button>
-          ))}
-        </div>
-        <p className="hint">
-          Nothing involving heights, vehicles, fire, alcohol, or anyone who
-          hasn&apos;t agreed to be in it. That&apos;s the whole moderation policy, built
-          into the menu.
+        <p className="hint" style={{ marginBottom: 4 }}>
+          {`${categories.length} of them. They're built to be hard to fake — a stranger has to react, or it's one unbroken take, or it leaves something anyone can check afterwards.`}
+        </p>
+        {GROUP_ORDER.filter((g) => categories.some((c) => c.group_label === g)).map((group) => (
+          <div key={group} style={{ marginTop: 18 }}>
+            <p className="eyebrow" style={{ marginBottom: 2 }}>{group}</p>
+            <p className="hint" style={{ marginBottom: 10 }}>{GROUP_BLURB[group]}</p>
+            <div className="catgrid" role="group" aria-label={`${group} dares`}>
+              {categories
+                .filter((c) => c.group_label === group)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="cat"
+                    aria-pressed={categoryId === c.id}
+                    onClick={() => setCategoryId(c.id)}
+                  >
+                    <em>{c.emoji}</em>
+                    <b>{c.label}</b>
+                    <i>{c.blurb}</i>
+                  </button>
+                ))}
+            </div>
+          </div>
+        ))}
+        <p className="hint" style={{ marginTop: 14 }}>
+          Nothing involving heights, vehicles, fire, alcohol, drugs, or anyone
+          who hasn&apos;t agreed to be in it. That&apos;s the whole moderation policy,
+          built into the menu.
         </p>
       </Rv>
 
@@ -242,6 +269,15 @@ export function CreateForm({
           Payouts go to the wallet you&apos;re connected with. Use a wallet you
           control — not an exchange address.
         </p>
+        {instagram.trim() && (
+          <div className="notice notice-cool" style={{ marginTop: 10 }}>
+            <b>Want the verified tick?</b> After you post, put your dare code
+            in your Instagram bio for a few minutes. We check it by hand and
+            mark the handle as really yours — that&apos;s what tells backers
+            they&apos;re funding a person and not a stranger using someone
+            else&apos;s name.
+          </div>
+        )}
       </Rv>
 
       <Rv className="card card-pad" style={{ marginTop: 30 }}>

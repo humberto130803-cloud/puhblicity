@@ -108,7 +108,33 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
         )}
       </Rv>
 
-      <Rv className="card card-pad">
+      {/* The single thing that makes recycled footage impractical: a code
+          that did not exist until this dare was funded. */}
+      <Rv className="card card-pad" style={{ borderColor: "var(--flare)", boxShadow: "6px 6px 0 var(--flare)" }}>
+        <p className="eyebrow">Start the video with this</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", margin: "12px 0 10px" }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 30, letterSpacing: ".16em", background: "var(--ink)",
+              color: "var(--gold)", padding: "10px 16px", borderRadius: 3,
+            }}
+          >
+            {dare.id}
+          </span>
+          <span style={{ fontSize: 15, flex: 1, minWidth: 200 }}>
+            Say it out loud, or hold it up written down, in the first few
+            seconds — before you do the dare.
+          </span>
+        </div>
+        <p className="hint">
+          No code, no payout. It&apos;s how we know the video was filmed for this
+          dare and not pulled from somewhere else, and it&apos;s the only reason we
+          can take your word for the rest.
+        </p>
+      </Rv>
+
+      <Rv className="card card-pad" style={{ marginTop: 22 }}>
         <p className="eyebrow">What we need to see</p>
         <p style={{ marginTop: 9 }}>
           {dare.category_blurb}{" "}

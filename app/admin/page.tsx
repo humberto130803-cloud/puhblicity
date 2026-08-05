@@ -143,6 +143,10 @@ export default function AdminPage() {
                         <button className="btn btn-sm" onClick={() => void watchProof(d.id)}>
                           <span>▶ Watch</span>
                         </button>
+                        {/* Check this against the first seconds of the video. */}
+                        <div className="mono small" style={{ marginTop: 6, color: "var(--slate)" }}>
+                          code {d.id}
+                        </div>
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
                         <button
@@ -189,6 +193,25 @@ export default function AdminPage() {
                         <button className="btn btn-sm btn-primary" onClick={() => act({ action: "clear_flag", dareId: d.id })}>
                           <span>Clear</span>
                         </button>{" "}
+                        {d.doer_instagram && !d.verified && (
+                          <>
+                            <a
+                              className="btn btn-sm"
+                              href={`https://instagram.com/${d.doer_instagram}`}
+                              target="_blank" rel="noopener noreferrer nofollow"
+                              title={`Check their bio for the code ${d.id}`}
+                            >
+                              <span>Check @{d.doer_instagram}</span>
+                            </a>{" "}
+                            <button
+                              className="btn btn-sm btn-jade"
+                              onClick={() => act({ action: "verify_handle", dareId: d.id })}
+                              title="Their bio contains this dare's code"
+                            >
+                              <span>✓ Handle is theirs</span>
+                            </button>{" "}
+                          </>
+                        )}
                         <button
                           className="btn btn-sm"
                           onClick={() => {

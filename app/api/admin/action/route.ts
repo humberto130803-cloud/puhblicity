@@ -48,6 +48,32 @@ export async function POST(request: Request) {
       return Response.json({ ok: true, paused });
     }
 
+    case "verify_handle": {
+      // Confirmed by eye: the doer put their dare code in their Instagram
+      // bio, so the handle really belongs to them. This is the only identity
+      // claim the site makes, and it's made by a human who checked.
+      if (!isDareId(body.dareId)) return bad(400, "Bad dare id");
+      const { data, error } = await db
+        .from("puhb_dares")
+        .update({ verified: true })
+        .eq("id", body.dareId)
+        .select("doer_wallet, doer_instagram")
+        .single();
+      if (error) return bad(500, error.message);
+      // One person, one handle: verify every dare from that wallet+handle.
+      if (data?.doer_instagram) {
+        await db
+          .from("puhb_dares")
+          .update({ verified: true })
+          .eq("doer_wallet", data.doer_wallet)
+          .eq("doer_instagram", data.doer_instagram);
+      }
+      await logAction(actor, "handle_verified", body.dareId, {
+        handle: data?.doer_instagram,
+      });
+      return Response.json({ ok: true });
+    }
+
     case "clear_flag": {
       if (!isDareId(body.dareId)) return bad(400, "Bad dare id");
       const { error } = await db

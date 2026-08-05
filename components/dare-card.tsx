@@ -32,6 +32,10 @@ export function DareCard({ dare }: { dare: PublicDare }) {
         <StatusStamp status={dare.status} />
       </div>
       <h3 className="dare-title">{dare.category_label}</h3>
+      {/* The reason the board is worth scrolling: proof you can actually watch. */}
+      {dare.status === "PAID" && dare.has_proof && !dare.proof_deleted_at && (
+        <span className="watch-flag">▶ Proof is up — watch it</span>
+      )}
       <p className="dare-detail">{dare.detail || dare.category_blurb}</p>
       <Tote value={padSol(pot)} size="sm" />
       <div>

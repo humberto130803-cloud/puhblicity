@@ -17,6 +17,10 @@ export const CONFIG = {
   MAX_LIVE_DARES_PER_WALLET:            3,
   MAX_PROOF_BYTES:             50_000_000,  // 50 MB — Supabase free-tier object cap
   MAX_PROOF_SECONDS:                   90,
+  // How long an approved proof stays watchable on its dare page before the
+  // file is deleted for good. Long enough to be the proof the board is real,
+  // short enough that nobody's face lives on the internet permanently.
+  PROOF_PUBLIC_HOURS:                  48,
 } as const;
 
 export const RPC_URL =

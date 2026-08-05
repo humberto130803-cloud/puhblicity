@@ -43,11 +43,14 @@ export default function PrivacyPage() {
         <ul style={{ margin: "0 0 0 22px", lineHeight: 1.8 }}>
           <li>Stored in a private bucket; served only through short-lived signed links.</li>
           <li>Before payout, only you and the reviewer can watch.</li>
-          <li>After payout, the video is viewable on the dare page — backers paid to see it, and you were told this at upload.</li>
+          <li>After payout, the video is watchable on the dare page for 48 hours — backers paid to see it, and you were told this at upload.</li>
           <li>
-            <b>Right to erasure:</b> after payout you can ask us to delete
-            your video, and we will. The dare record and its outcome stay;
-            the file goes.
+            <b>Then it&apos;s deleted.</b> Not hidden, not unlisted — the file is
+            removed automatically once those 48 hours are up. The dare, the
+            outcome and the payout stay; the video doesn&apos;t.
+          </li>
+          <li>
+            Want it gone sooner? Ask, and we&apos;ll delete it early.
           </li>
         </ul>
       </Section>

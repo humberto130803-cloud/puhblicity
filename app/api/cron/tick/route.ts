@@ -1,4 +1,4 @@
-import { sweepDeadlines, recoverPayouts } from "@/lib/settle";
+import { sweepDeadlines, recoverPayouts, expireProofs } from "@/lib/settle";
 import { runIndexer } from "@/lib/indexer";
 import { runRefundWorker } from "@/lib/refunds";
 
@@ -42,6 +42,11 @@ async function tick(request: Request): Promise<Response> {
     out.payouts = await recoverPayouts();
   } catch (e) {
     errors.push(`payouts: ${String(e)}`);
+  }
+  try {
+    out.proofsExpired = await expireProofs();
+  } catch (e) {
+    errors.push(`proofs: ${String(e)}`);
   }
 
   return Response.json({ ok: errors.length === 0, ...out, errors });

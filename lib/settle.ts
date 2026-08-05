@@ -35,7 +35,14 @@ export async function approveAndPay(
     "IN_REVIEW",
     "PAID",
     actor,
-    { settled_at: new Date().toISOString(), payout_claimed_at: new Date().toISOString() },
+    {
+      settled_at: new Date().toISOString(),
+      payout_claimed_at: new Date().toISOString(),
+      // The proof goes public now and comes down automatically.
+      proof_public_until: new Date(
+        Date.now() + CONFIG.PROOF_PUBLIC_HOURS * 3600_000
+      ).toISOString(),
+    },
     { pot: dare.pot_lamports }
   );
   if (!ok) return { ok: false, error: "Someone else settled this dare first" };
@@ -101,6 +108,43 @@ export async function recoverPayouts(): Promise<number> {
     }
   }
   return recovered;
+}
+
+/**
+ * Take down proof videos whose public window has closed.
+ *
+ * The file is deleted outright — not hidden. Half the reason people agree to
+ * be filmed at all is that it doesn't live online forever, and a promise to
+ * delete that quietly resolves to "we stopped linking it" isn't a promise.
+ * The dare, the outcome, the payout signature and the doer's note all stay.
+ */
+export async function expireProofs(): Promise<number> {
+  const db = mustDb();
+  const { data: due } = await db
+    .from("puhb_dares")
+    .select("id, proof_path")
+    .not("proof_public_until", "is", null)
+    .is("proof_deleted_at", null)
+    .lt("proof_public_until", new Date().toISOString())
+    .limit(25);
+
+  let removed = 0;
+  for (const d of due ?? []) {
+    if (d.proof_path) {
+      const { error } = await db.storage.from("puhb-proofs").remove([d.proof_path]);
+      // A missing object is fine — it's already gone. Anything else, retry
+      // on the next tick rather than marking it deleted when it isn't.
+      if (error && !/not.?found/i.test(error.message)) continue;
+    }
+    await db
+      .from("puhb_dares")
+      .update({ proof_deleted_at: new Date().toISOString(), proof_path: null })
+      .eq("id", d.id)
+      .is("proof_deleted_at", null);
+    await logAction("system", "proof_expired_deleted", d.id, {});
+    removed++;
+  }
+  return removed;
 }
 
 /**

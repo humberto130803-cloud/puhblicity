@@ -10,7 +10,7 @@ export default async function CreatePage() {
   const [{ data: categories }, settings] = await Promise.all([
     mustDb()
       .from("puhb_categories")
-      .select("id, label, emoji, blurb")
+      .select("id, label, emoji, blurb, group_label")
       .eq("active", true)
       .order("sort_order"),
     getSettings(),

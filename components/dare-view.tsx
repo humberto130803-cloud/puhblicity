@@ -103,6 +103,8 @@ export function DareView({
   const cut = pot - payout;
 
   const refundsSent = pledges.filter((p) => p.refund_status === "SENT");
+  const windowOpen =
+    !!dare.proof_public_until && new Date(dare.proof_public_until) > new Date();
 
   const whatHappened =
     (dare.status === "KILLED"
@@ -131,7 +133,29 @@ export function DareView({
             <span>
               {dare.status === "PAID" ? "Done by" : "Posted by"} <b>{dare.doer_name}</b>
               {dare.doer_instagram && (
-                <> · <span className="mono muted small">@{dare.doer_instagram}</span></>
+                <>
+                  {" · "}
+                  {/* Link out rather than mirror: Instagram is where the
+                      real face, the real followers and the real reporting
+                      tools live. We don't try to reproduce any of that. */}
+                  <a
+                    className="mono small"
+                    href={`https://instagram.com/${dare.doer_instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                  >
+                    @{dare.doer_instagram} ↗
+                  </a>
+                  {dare.verified ? (
+                    <span className="verified-tick" title="This handle was confirmed by the person who owns it">
+                      ✓ verified
+                    </span>
+                  ) : (
+                    <span className="small muted" style={{ marginLeft: 6 }}>
+                      (unconfirmed)
+                    </span>
+                  )}
+                </>
               )}
             </span>
           </div>
@@ -144,16 +168,35 @@ export function DareView({
           </Rv>
         )}
 
-        {/* proof video once paid (public) or for the owner */}
+        {/* proof video: public while the window is open, owner any time */}
         {dare.has_proof && (dare.status === "PAID" || isOwner) && (
           <Rv className="card" style={{ padding: 0, overflow: "hidden" }}>
             <ProofVideo dareId={dare.id} />
-            {dare.proof_note && (
-              <div className="card-pad" style={{ borderTop: "2px solid var(--ink)" }}>
-                <p className="eyebrow">Note from {dare.doer_name}</p>
-                <p style={{ marginTop: 7 }}>{dare.proof_note}</p>
-              </div>
-            )}
+            <div className="card-pad" style={{ borderTop: "2px solid var(--ink)" }}>
+              {dare.proof_note && (
+                <>
+                  <p className="eyebrow">Note from {dare.doer_name}</p>
+                  <p style={{ marginTop: 7, marginBottom: 12 }}>{dare.proof_note}</p>
+                </>
+              )}
+              {windowOpen && (
+                <p className="small muted">
+                  This comes down in{" "}
+                  <Clock until={dare.proof_public_until!} urgentUnderHours={6} className="small" />
+                  {" "}— proof videos are deleted 48 hours after payout.
+                </p>
+              )}
+            </div>
+          </Rv>
+        )}
+
+        {/* the file is gone, but the dare still happened */}
+        {dare.status === "PAID" && dare.proof_deleted_at && (
+          <Rv className="notice notice-cool">
+            <b>The video has come down.</b> It was up for 48 hours after
+            payout, then deleted — that&apos;s the deal we make with everyone who
+            films themselves for this. The payout below is still on-chain and
+            still checkable.
           </Rv>
         )}
 
@@ -198,6 +241,11 @@ export function DareView({
               {dare.category_blurb}{" "}
               If the proof doesn&apos;t match the dare, it&apos;s rejected and every
               backer is refunded.
+            </p>
+            <p style={{ marginTop: 11 }} className="small muted">
+              {dare.doer_name} also has to open the video by saying or showing
+              the dare code <span className="mono" style={{ color: "var(--ink)" }}>{dare.id}</span> — so
+              nobody can pass off a video they didn&apos;t film for this.
             </p>
           </Rv>
         )}

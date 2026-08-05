@@ -21,9 +21,24 @@ export async function GET(request: Request) {
   const session = await getSession();
   const isOwner = !!session && session.pubkey === dare.doer_wallet;
   const isAdmin = !!session && isAdminPubkey(session.pubkey);
-  const isPublic = dare.status === "PAID";
-  if (!isOwner && !isAdmin && !isPublic) {
-    return Response.json({ error: "Proof unlocks when the dare is paid out" }, { status: 403 });
+  // Public only while the window is open. After that the file is deleted
+  // anyway — this just stops a signed URL being handed out in the gap
+  // between expiry and the next cron tick.
+  const windowOpen =
+    dare.status === "PAID" &&
+    !!dare.proof_public_until &&
+    new Date(dare.proof_public_until) > new Date();
+
+  if (!isOwner && !isAdmin && !windowOpen) {
+    return Response.json(
+      {
+        error:
+          dare.status === "PAID"
+            ? "This proof has come down. Videos stay up for 48 hours after payout, then they're deleted."
+            : "Proof unlocks when the dare is paid out",
+      },
+      { status: 403 }
+    );
   }
 
   const { data, error } = await mustDb()

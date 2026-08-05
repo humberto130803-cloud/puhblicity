@@ -57,7 +57,22 @@ export default function MoneyPage() {
           It isn&apos;t an investment, a bet, or a purchase of anything that can be
           resold. Nothing you back can gain value. There&apos;s no chance involved —
           a dare pays out because someone did the thing, not because a number
-          came up. What you get is the video and your name on the dare.
+          came up. What you get is the video, watchable for 48 hours after
+          payout, and your name on the dare.
+        </p>
+      </Rv>
+
+      <Rv>
+        <h3 className="h3" style={{ marginBottom: 9 }}>How we know they really did it</h3>
+        <p style={{ marginBottom: 24 }}>
+          Every proof video has to open with the dare&apos;s own code — an
+          eight-character string that didn&apos;t exist before the dare was
+          funded. Said out loud or held up, in the first few seconds. That
+          makes a recycled or downloaded video almost impossible to pass off,
+          and it means a human can check it in seconds. The dares themselves
+          are chosen to be hard to fake too: strangers have to react, or it&apos;s
+          one unbroken take, or it leaves something anyone can check
+          afterwards.
         </p>
       </Rv>
 

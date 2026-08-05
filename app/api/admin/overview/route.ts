@@ -70,6 +70,7 @@ export async function GET() {
     flagged: (flagged.data ?? []).map((d) => ({
       ...toPublicDare(d),
       doer_wallet: d.doer_wallet,
+      doer_instagram: d.doer_instagram,
     })),
     failedRefunds: failedRefunds.data ?? [],
     orphans: orphans.data ?? [],

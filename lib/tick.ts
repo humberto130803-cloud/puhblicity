@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { sweepDeadlines, recoverPayouts } from "@/lib/settle";
+import { sweepDeadlines, recoverPayouts, expireProofs } from "@/lib/settle";
 import { runIndexer } from "@/lib/indexer";
 import { runRefundWorker } from "@/lib/refunds";
 
@@ -20,6 +20,7 @@ export function maybeTick(): void {
       await runIndexer();
       await runRefundWorker();
       await recoverPayouts();
+      await expireProofs();
     } catch {
       // Next scheduled tick catches up.
     }

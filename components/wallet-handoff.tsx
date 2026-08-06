@@ -1,6 +1,7 @@
 "use client";
 
 import { currentUrl, isIos, phantomBrowseUrl } from "@/components/wallet-env";
+import { useT } from "@/components/locale-provider";
 
 /**
  * Shown when someone on a phone tries to do something that needs a wallet.
@@ -11,6 +12,7 @@ import { currentUrl, isIos, phantomBrowseUrl } from "@/components/wallet-env";
  * Phantom and can finish there.
  */
 export function WalletHandoff({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const target = currentUrl();
   const ios = isIos();
 
@@ -27,8 +29,8 @@ export function WalletHandoff({ onClose }: { onClose: () => void }) {
       <div className="modal">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
-            <p className="eyebrow">One step</p>
-            <h2 className="h3" style={{ marginTop: 7 }}>Open this in your wallet</h2>
+            <p className="eyebrow">{t.wallet.handoffEyebrow}</p>
+            <h2 className="h3" style={{ marginTop: 7 }}>{t.wallet.handoffTitle}</h2>
           </div>
           <button className="modal-x" aria-label="Close" onClick={onClose}>✕</button>
         </div>
@@ -36,7 +38,7 @@ export function WalletHandoff({ onClose }: { onClose: () => void }) {
         {/* One string: JSX drops the space around an expression sitting at a
             line boundary, which produced "Your browsercan't". */}
         <p style={{ margin: "18px 0 14px", fontSize: 15, lineHeight: 1.5 }}>
-          {`${ios ? "Safari on iPhone" : "Your browser"} can't talk to a wallet directly — that's a phone limitation, not ours. Phantom has its own browser built in, and everything works normally in there.`}
+          {t.wallet.handoffBody(ios ? t.wallet.safariIphone : t.wallet.yourBrowser)}
         </p>
 
         <a
@@ -44,16 +46,15 @@ export function WalletHandoff({ onClose }: { onClose: () => void }) {
           href={phantomBrowseUrl(target)}
           rel="noopener noreferrer"
         >
-          <span>Open in Phantom</span><span className="arrow">→</span>
+          <span>{t.wallet.openInPhantom}</span><span className="arrow">→</span>
         </a>
 
         <p className="hint" style={{ marginTop: 14 }}>
-          You&apos;ll land on this exact page inside Phantom, wallet ready.
-          Don&apos;t have it? Install Phantom, then come back and tap this again.
+          {t.wallet.landHere}
         </p>
 
         <div className="notice notice-cool" style={{ marginTop: 16 }}>
-          <b>Using a different wallet?</b> Open its in-app browser and paste{" "}
+          <b>{t.wallet.otherWallet}</b> {t.wallet.otherWalletBody}{" "}
           <span className="mono" style={{ overflowWrap: "anywhere" }}>
             {target.replace(/^https?:\/\//, "")}
           </span>

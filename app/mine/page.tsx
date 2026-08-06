@@ -8,6 +8,7 @@ import { StatusStamp } from "@/components/status-stamp";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
 import { formatSol, padSol, shortWallet } from "@/lib/format";
+import { useT, useLocale } from "@/components/locale-provider";
 import type { PublicDare } from "@/lib/dares";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -15,6 +16,8 @@ import type { PublicDare } from "@/lib/dares";
 type MineDare = PublicDare & { flagged: boolean };
 
 export default function MinePage() {
+  const t = useT();
+  const locale = useLocale();
   const { session } = useAuth();
   const connect = useConnectOrSignIn();
   const [data, setData] = useState<any | null>(null);
@@ -31,11 +34,11 @@ export default function MinePage() {
     return (
       <div className="wrap" style={{ padding: "44px 24px 90px" }}>
         <div className="card card-pad" style={{ maxWidth: 480 }}>
-          <p className="h3" style={{ marginBottom: 6 }}>Your side of the board</p>
+          <p className="h3" style={{ marginBottom: 6 }}>{t.mine.connectTitle}</p>
           <p className="muted small" style={{ marginBottom: 16 }}>
-            Connect to see your dares, your pledges, and what&apos;s owed to you.
+            {t.mine.connectBody}
           </p>
-          <button className="btn btn-primary" onClick={connect}><span>Connect wallet</span></button>
+          <button className="btn btn-primary" onClick={connect}><span>{t.mine.connect}</span></button>
         </div>
       </div>
     );
@@ -50,22 +53,21 @@ export default function MinePage() {
     <div className="wrap" style={{ padding: "44px 24px 90px" }}>
       <Rv>
         <p className="eyebrow mono">{shortWallet(session.pubkey)}</p>
-        <h1 className="h2" style={{ margin: "11px 0 28px" }}>My dares</h1>
+        <h1 className="h2" style={{ margin: "11px 0 28px" }}>{t.mine.heading}</h1>
       </Rv>
 
       {data?.stats && (
         <Rv className="statgrid" style={{ marginBottom: 34 }}>
-          <div className="stat"><span className="eyebrow">Paid to me</span><b>{padSol(BigInt(data.stats.paidToMe))}</b></div>
-          <div className="stat"><span className="eyebrow">In open pots</span><b>{padSol(BigInt(data.stats.inOpenPots))}</b></div>
-          <div className="stat"><span className="eyebrow">I&apos;ve backed</span><b>{padSol(BigInt(data.stats.backed))}</b></div>
-          <div className="stat"><span className="eyebrow">Refunded to me</span><b>{padSol(BigInt(data.stats.refundedToMe))}</b></div>
+          <div className="stat"><span className="eyebrow">{t.mine.paidToMe}</span><b>{padSol(BigInt(data.stats.paidToMe))}</b></div>
+          <div className="stat"><span className="eyebrow">{t.mine.inOpenPots}</span><b>{padSol(BigInt(data.stats.inOpenPots))}</b></div>
+          <div className="stat"><span className="eyebrow">{t.mine.iBacked}</span><b>{padSol(BigInt(data.stats.backed))}</b></div>
+          <div className="stat"><span className="eyebrow">{t.mine.refundedToMe}</span><b>{padSol(BigInt(data.stats.refundedToMe))}</b></div>
         </Rv>
       )}
 
       {dares.some((d) => d.flagged && d.status === "OPEN") && (
         <Rv className="notice notice-cool" style={{ marginBottom: 20 }}>
-          <b>One of yours is in the queue.</b> A quick human check before it
-          shows on the public board — usually minutes.
+          <b>{t.mine.queueTitle}</b> {t.mine.queueBody}
         </Rv>
       )}
 
@@ -81,40 +83,39 @@ export default function MinePage() {
               <StatusStamp status={d.status} />
               <h3 className="h3" style={{ margin: "13px 0 6px" }}>{d.category_label}</h3>
               <p className="muted small">
-                Pot {formatSol(BigInt(d.pot))} SOL · you&apos;ll receive{" "}
-                {formatSol((BigInt(d.pot) * 9000n) / 10000n)} after our 10%
+                {t.mine.willReceive(formatSol(BigInt(d.pot)), formatSol((BigInt(d.pot) * 9000n) / 10000n))}
               </p>
             </div>
             {d.proof_due_at && (
               <div style={{ textAlign: "right" }}>
-                <p className="eyebrow">Time left to prove it</p>
+                <p className="eyebrow">{t.mine.timeLeft}</p>
                 <Clock until={d.proof_due_at} urgentUnderHours={48} className="" />
               </div>
             )}
           </div>
           <Link className="btn btn-primary btn-block" href={`/prove/${d.id}`} style={{ marginTop: 20 }}>
-            <span>Send your proof</span><span className="arrow">→</span>
+            <span>{t.dare.sendProof}</span><span className="arrow">→</span>
           </Link>
         </Rv>
       ))}
 
       <Rv as="p" className="eyebrow" style={{ marginBottom: 13 }}>
-        {dares.length ? "Everything else" : "Your dares"}
+        {dares.length ? t.mine.everythingElse : t.mine.yourDares}
       </Rv>
       {rest.length === 0 && needsProof.length === 0 ? (
         <Rv className="card card-pad" style={{ display: "flex", gap: 18, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
           <div>
-            <p className="h3">Nothing yet.</p>
-            <p className="muted small" style={{ marginTop: 4 }}>Somebody has to go first. It costs 0.02 SOL to post.</p>
+            <p className="h3">{t.mine.emptyTitle}</p>
+            <p className="muted small" style={{ marginTop: 4 }}>{t.mine.emptyBody}</p>
           </div>
-          <Link className="btn btn-primary" href="/create"><span>Post your dare</span><span className="arrow">→</span></Link>
+          <Link className="btn btn-primary" href="/create"><span>{t.mine.postYours}</span><span className="arrow">→</span></Link>
         </Rv>
       ) : (
         <Rv className="card" style={{ overflow: "hidden" }}>
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th>Dare</th><th>Pot</th><th>Status</th><th>Settled</th><th></th></tr>
+                <tr><th>{t.mine.thDare}</th><th>{t.mine.thPot}</th><th>{t.mine.thStatus}</th><th>{t.mine.thSettled}</th><th></th></tr>
               </thead>
               <tbody>
                 {rest.map((d) => (
@@ -129,12 +130,12 @@ export default function MinePage() {
                       {d.status === "PAID"
                         ? `${formatSol((BigInt(d.pot) * 9000n) / 10000n)} SOL · ${d.settled_at ? new Date(d.settled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}`
                         : d.status === "REFUNDED"
-                        ? `Refunded · ${d.settled_at ? new Date(d.settled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""}`
+                        ? `${t.status.REFUNDED} · ${d.settled_at ? new Date(d.settled_at).toLocaleDateString(locale === "es" ? "es-419" : "en-GB", { day: "numeric", month: "short" }) : ""}`
                         : "—"}
                     </td>
                     <td>
                       <Link className="btn btn-sm btn-ghost" href={`/d/${d.id}`}>
-                        <span>{d.status === "PAID" ? "Receipt" : "View"}</span>
+                        <span>{d.status === "PAID" ? t.mine.receipt : t.mine.view}</span>
                       </Link>
                     </td>
                   </tr>
@@ -148,13 +149,13 @@ export default function MinePage() {
       {backed.length > 0 && (
         <>
           <Rv as="p" className="eyebrow" style={{ margin: "36px 0 13px" }}>
-            Dares I&apos;ve backed
+            {t.mine.iveBacked}
           </Rv>
           <Rv className="card" style={{ overflow: "hidden" }}>
             <div className="table-scroll">
               <table className="table">
                 <thead>
-                  <tr><th>Dare</th><th>My pledge</th><th>Status</th><th></th></tr>
+                  <tr><th>{t.mine.thDare}</th><th>{t.mine.thMyPledge}</th><th>{t.mine.thStatus}</th><th></th></tr>
                 </thead>
                 <tbody>
                   {backed.map((p) => (
@@ -166,7 +167,7 @@ export default function MinePage() {
                       <td className="mono">{padSol(BigInt(p.lamports))}</td>
                       <td>
                         {p.refund_status === "SENT" ? (
-                          <span className="stamp stamp-refunded">Refunded in full</span>
+                          <span className="stamp stamp-refunded">{t.mine.refundedInFull}</span>
                         ) : p.dare ? (
                           <StatusStamp status={p.dare.status} />
                         ) : null}
@@ -178,11 +179,11 @@ export default function MinePage() {
                             href={`https://solscan.io/tx/${p.refund_signature}`}
                             target="_blank" rel="noopener noreferrer"
                           >
-                            <span>Tx</span>
+                            <span>{t.mine.tx}</span>
                           </a>
                         ) : p.dare ? (
                           <Link className="btn btn-sm btn-ghost" href={`/d/${p.dare.id}`}>
-                            <span>Watch</span>
+                            <span>{t.mine.watch}</span>
                           </Link>
                         ) : null}
                       </td>

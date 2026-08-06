@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/components/locale-provider";
 
 /**
  * "Put it on your home screen."
@@ -21,6 +22,7 @@ type PromptEvent = Event & {
 const DISMISSED_KEY = "puhb.installhint.dismissed";
 
 export function InstallHint() {
+  const t = useT();
   const [deferred, setDeferred] = useState<PromptEvent | null>(null);
   const [showIos, setShowIos] = useState(false);
 
@@ -81,16 +83,16 @@ export function InstallHint() {
     <div className="install-hint" role="dialog" aria-label="Install PUHBLICITY">
       <img src="/icon-192.png" alt="" width={44} height={44} className="install-hint__icon" />
       <div className="install-hint__body">
-        <b>Put it on your home screen</b>
+        <b>{t.install.title}</b>
         <span>
           {deferred
-            ? "Full screen, no browser bar. One tap."
-            : "Tap Share, then “Add to Home Screen”."}
+            ? t.install.android
+            : t.install.ios}
         </span>
       </div>
       {deferred && (
         <button className="btn btn-sm btn-primary" onClick={() => void install()}>
-          <span>Install</span>
+          <span>{t.install.button}</span>
         </button>
       )}
       <button className="install-hint__x" onClick={dismiss} aria-label="Dismiss">

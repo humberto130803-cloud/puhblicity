@@ -2,6 +2,7 @@ import { mustDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { toPublicDare } from "@/lib/dares";
 import { computePayout } from "@/lib/settle";
+import { getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -13,16 +14,17 @@ export async function GET() {
   const session = await getSession();
   if (!session) return Response.json({ error: "Sign in first" }, { status: 401 });
   const db = mustDb();
+  const locale = await getLocale();
 
   const [{ data: dares }, { data: myPledges }] = await Promise.all([
     db
       .from("puhb_dares")
-      .select("*, puhb_categories(label, short_label, emoji, blurb)")
+      .select("*, puhb_categories(label, short_label, emoji, blurb, label_es, short_label_es, blurb_es)")
       .eq("doer_wallet", session.pubkey)
       .order("created_at", { ascending: false }),
     db
       .from("puhb_pledges")
-      .select("*, puhb_dares(id, doer_name, status, puhb_categories(label, emoji))")
+      .select("*, puhb_dares(id, doer_name, status, puhb_categories(label, emoji, label_es))")
       .eq("backer_wallet", session.pubkey)
       .order("credited_at", { ascending: false }),
   ]);
@@ -42,7 +44,7 @@ export async function GET() {
   }
 
   return Response.json({
-    dares: (dares ?? []).map((d) => ({ ...toPublicDare(d), flagged: d.flagged })),
+    dares: (dares ?? []).map((d) => ({ ...toPublicDare(d, locale), flagged: d.flagged })),
     backed: (myPledges ?? []).map((p) => ({
       signature: p.signature,
       lamports: String(p.lamports),
@@ -51,7 +53,10 @@ export async function GET() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       dare: (() => { const d = p.puhb_dares as any; return d ? {
         id: d.id, doer_name: d.doer_name, status: d.status,
-        label: d.puhb_categories?.label ?? "", emoji: d.puhb_categories?.emoji ?? "",
+        label: (locale === "es"
+          ? d.puhb_categories?.label_es || d.puhb_categories?.label
+          : d.puhb_categories?.label) ?? "",
+        emoji: d.puhb_categories?.emoji ?? "",
       } : null; })(),
     })),
     stats: {

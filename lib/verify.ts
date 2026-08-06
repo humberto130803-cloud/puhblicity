@@ -1,6 +1,8 @@
 import { PublicKey, type ParsedTransactionWithMeta } from "@solana/web3.js";
 import { rpc } from "@/lib/rpc";
 import { CONFIG, MEMO, VAULT_PUBKEY } from "@/lib/config";
+import { msg } from "@/lib/i18n/errors";
+import type { Locale } from "@/lib/i18n/types";
 
 /**
  * Server-side transaction verification. NEVER trust a client-reported
@@ -57,23 +59,24 @@ export function extractVaultCredit(
  */
 export async function verifyPostingFee(
   signature: string,
-  nonce: string
+  nonce: string,
+  locale: Locale = "en"
 ): Promise<{ ok: true; payer: string } | { ok: false; error: string }> {
   let tx: ParsedTransactionWithMeta | null = null;
   for (let i = 0; i < 4 && !tx; i++) {
     tx = await getParsedTx(signature);
     if (!tx) await new Promise((r) => setTimeout(r, 1500));
   }
-  if (!tx) return { ok: false, error: "Transaction not found on-chain yet — wait a few seconds and try again." };
+  if (!tx) return { ok: false, error: msg("txNotFound", locale) };
   const credit = extractVaultCredit(tx);
-  if (!credit) return { ok: false, error: "Transaction failed or doesn't touch the vault." };
+  if (!credit) return { ok: false, error: msg("txFailed", locale) };
   if (credit.lamports !== CONFIG.POSTING_FEE_LAMPORTS) {
-    return { ok: false, error: "That transaction isn't the posting fee." };
+    return { ok: false, error: msg("notTheFee", locale) };
   }
   if (credit.memo !== MEMO.newDare(nonce)) {
-    return { ok: false, error: "Fee transaction doesn't match this form session." };
+    return { ok: false, error: msg("feeMismatch", locale) };
   }
-  if (!credit.from) return { ok: false, error: "Could not identify the paying wallet." };
+  if (!credit.from) return { ok: false, error: msg("noPayer", locale) };
   return { ok: true, payer: credit.from };
 }
 

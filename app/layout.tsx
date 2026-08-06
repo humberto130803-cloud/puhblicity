@@ -6,6 +6,8 @@ import SiteFooter from "@/components/site-footer";
 import { ConfettiCanvas } from "@/components/confetti";
 import { RegisterSW } from "@/components/register-sw";
 import { InstallHint } from "@/components/install-hint";
+import { LocaleProvider } from "@/components/locale-provider";
+import { getT } from "@/lib/i18n";
 import "./globals.css";
 
 const anton = Anton({
@@ -23,12 +25,14 @@ const dmMono = DM_Mono({
   variable: "--font-dm-mono",
 });
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getT();
+  return { ...baseMetadata, title: t.meta.title, description: t.meta.description };
+}
+
+const baseMetadata: Metadata = {
   metadataBase: new URL("https://puhblicity.vercel.app"),
   applicationName: "PUHBLICITY",
-  title: "PUHBLICITY — name your price. Do the thing.",
-  description:
-    "You say what you'll do. The internet decides what it's worth. Hit your target and you're paid — miss it and every backer gets their SOL back, all of it.",
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png" },
@@ -67,24 +71,27 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { locale } = await getT();
   return (
     // The font variables MUST land on <html>: globals.css builds
     // --font-display/-body/-mono from them at :root, and a custom property
     // that references an undefined variable is invalid at computed-value
     // time — which silently dropped the whole site to Times.
-    <html lang="en" className={`${anton.variable} ${archivo.variable} ${dmMono.variable}`}>
+    <html lang={locale} className={`${anton.variable} ${archivo.variable} ${dmMono.variable}`}>
       <body>
-        <Providers>
-          <ConfettiCanvas />
-          <Chrome />
-          <main>{children}</main>
-          <SiteFooter />
-          <InstallHint />
-          <RegisterSW />
-        </Providers>
+        <LocaleProvider locale={locale}>
+          <Providers>
+            <ConfettiCanvas />
+            <Chrome />
+            <main>{children}</main>
+            <SiteFooter />
+            <InstallHint />
+            <RegisterSW />
+          </Providers>
+        </LocaleProvider>
       </body>
     </html>
   );

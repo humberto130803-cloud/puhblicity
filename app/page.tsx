@@ -6,14 +6,16 @@ import { Board } from "@/components/board";
 import { Tote, Therm } from "@/components/tote";
 import { Tape, Floaters, Marquee } from "@/components/hero-fx";
 import { Rv } from "@/components/reveal";
+import { getT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const { locale, t } = await getT();
   const [dares, settings, stats] = await Promise.all([
-    listBoardDares(),
+    listBoardDares(locale),
     getSettings(),
-    siteStats(),
+    siteStats(locale),
   ]);
 
   const donePct =
@@ -30,36 +32,33 @@ export default async function Home() {
           <div className="hero-grid">
             <div>
               <Rv as="p" className="eyebrow eyebrow-live">
-                <i></i> {stats.openCount} dare{stats.openCount === 1 ? "" : "s"} open ·{" "}
-                {formatSol(stats.openPot)} SOL in play right now
+                <i></i> {t.home.live(stats.openCount, formatSol(stats.openPot))}
               </Rv>
               <Rv as="h1" className="h1" style={{ marginTop: 18 }}>
-                <span className="line"><i>Name your</i></span>
-                <span className="line"><i>price. Do</i></span>
-                <span className="line"><i>the thing.</i></span>
+                <span className="line"><i>{t.home.h1a}</i></span>
+                <span className="line"><i>{t.home.h1b}</i></span>
+                <span className="line"><i>{t.home.h1c}</i></span>
               </Rv>
               <Rv as="p" className="hero-sub" index={1}>
-                You say what you&apos;ll do. The internet decides what it&apos;s worth.
-                Hit your target and you&apos;re paid — miss it and every backer gets
-                their SOL back, all of it.
+                {t.home.sub}
               </Rv>
               <Rv className="hero-cta" index={2}>
                 <Link className="btn btn-primary" href="/create">
-                  <span>Post your dare</span><span className="arrow">→</span>
+                  <span>{t.home.post}</span><span className="arrow">→</span>
                 </Link>
                 <a className="btn on-dark-btn" href="#board">
-                  <span>See what&apos;s open</span>
+                  <span>{t.home.seeOpen}</span>
                 </a>
               </Rv>
               <Rv className="hero-rules" index={3}>
-                <div><b>You go first</b>Nobody can dare you.</div>
-                <div><b>5 SOL ceiling</b>The number stops.</div>
-                <div><b>Full refunds</b>No target, no charge.</div>
+                <div><b>{t.home.rule1t}</b>{t.home.rule1b}</div>
+                <div><b>{t.home.rule2t}</b>{t.home.rule2b}</div>
+                <div><b>{t.home.rule3t}</b>{t.home.rule3b}</div>
               </Rv>
             </div>
 
             <Rv className="hero-tote on-field" index={1}>
-              <p className="eyebrow">Paid out to doers so far</p>
+              <p className="eyebrow">{t.home.paidSoFar}</p>
               <Tote
                 value={padSol(stats.paidOutTotal)}
                 size="xl"
@@ -74,13 +73,13 @@ export default async function Home() {
                 ticks={12}
               />
               <div className="therm-scale" style={{ color: "#8FB2DA" }}>
-                <span>{stats.paidCount} dare{stats.paidCount === 1 ? "" : "s"} done</span>
-                <span>{stats.openCount} open right now</span>
+                <span>{t.home.daresDone(stats.paidCount)}</span>
+                <span>{t.home.openNow(stats.openCount)}</span>
               </div>
             </Rv>
           </div>
         </div>
-        <div className="scrollcue"><i></i> Scroll to the board</div>
+        <div className="scrollcue"><i></i> {t.home.scroll}</div>
       </div>
 
       <Marquee items={stats.marquee} />
@@ -88,8 +87,7 @@ export default async function Home() {
       {settings.paused && (
         <div className="wrap" style={{ paddingTop: 24 }}>
           <div className="notice" role="alert">
-            <b>Paused.</b> Nothing new opens until we&apos;re back. Money already
-            pledged is safe — refunds and payouts keep running.
+            <b>{t.home.pausedTitle}</b> {t.home.paused}
           </div>
         </div>
       )}
@@ -98,14 +96,16 @@ export default async function Home() {
 
       <div className="wrap section" style={{ paddingTop: 0 }}>
         <Rv as="p" className="eyebrow" style={{ marginBottom: 16 }}>
-          Start to finish
+          {t.home.stepsEyebrow}
         </Rv>
         <Rv className="steps">
-          <div className="step"><u>01</u><b>You post</b><p>Pick a dare from the menu, set your target and a deadline. 0.02 SOL to post.</p></div>
-          <div className="step"><u>02</u><b>People back it</b><p>The pot climbs in public. Anyone can watch, anyone can add.</p></div>
-          <div className="step"><u>03</u><b>Target hits</b><p>Funding closes on the spot. You get 48 hours.</p></div>
-          <div className="step"><u>04</u><b>You send proof</b><p>One video. We check it, usually within a few hours.</p></div>
-          <div className="step"><u>05</u><b>You&apos;re paid</b><p>Pot minus our 10% lands in your wallet. Miss any step and backers are refunded in full.</p></div>
+          {t.home.steps.map((s, i) => (
+            <div className="step" key={i}>
+              <u>{String(i + 1).padStart(2, "0")}</u>
+              <b>{s.t}</b>
+              <p>{s.b}</p>
+            </div>
+          ))}
         </Rv>
       </div>
     </>

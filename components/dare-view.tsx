@@ -12,6 +12,7 @@ import { burst } from "@/components/confetti";
 import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
 import { formatSol, padSol } from "@/lib/format";
+import { useT } from "@/components/locale-provider";
 import type { PublicDare, PublicPledge } from "@/lib/dares";
 
 const AVATAR_BG = ["#B8D0EC", "#FFD9A0", "#C9EBD9", "#EED0D0", "#D8E3EF"];
@@ -46,6 +47,7 @@ export function DareView({
   const [pledges, setPledges] = useState(initialPledges);
   const [freshSigs, setFreshSigs] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState(false);
+  const t = useT();
   const { session } = useAuth();
   const connect = useConnectOrSignIn();
   const seen = useRef(new Set(initialPledges.map((p) => p.signature)));
@@ -108,13 +110,13 @@ export function DareView({
 
   const whatHappened =
     (dare.status === "KILLED"
-      ? "This dare broke the rules and was removed. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
+      ? t.reasons.killed
       : dare.reject_reason
-      ? `The proof didn't pass review: "${dare.reject_reason}". Every pledge goes back to the wallet it came from — the full amount, no fee deducted.`
+      ? t.reasons.rejected(dare.reject_reason)
       : dare.proof_due_at && new Date(dare.proof_due_at) < new Date() && pot >= target
-      ? "The target was hit, but proof never arrived inside the 48-hour window. Every pledge goes back to the wallet it came from — the full amount, no fee deducted."
-      : `The deadline passed with ${formatSol(pot)} SOL in the pot against a ${formatSol(target)} target. Every pledge went back to the wallet it came from — the full amount, no fee deducted.`) +
-    ` ${dare.doer_name} keeps nothing and the 0.02 posting fee isn't returned.`;
+      ? t.reasons.noProof
+      : t.reasons.missedTarget(formatSol(pot), formatSol(target))) +
+    " " + t.reasons.tail(dare.doer_name);
 
   return (
     <div className="wrap detail-grid">
@@ -131,7 +133,7 @@ export function DareView({
           <div className="dare-doer" style={{ marginTop: 18 }}>
             <Avatar name={dare.doer_name} />
             <span>
-              {dare.status === "PAID" ? "Done by" : "Posted by"} <b>{dare.doer_name}</b>
+              {dare.status === "PAID" ? t.dare.doneBy : t.dare.postedBy} <b>{dare.doer_name}</b>
               {dare.doer_instagram && (
                 <>
                   {" · "}
@@ -148,11 +150,11 @@ export function DareView({
                   </a>
                   {dare.verified ? (
                     <span className="verified-tick" title="This handle was confirmed by the person who owns it">
-                      ✓ verified
+                      {t.dare.verified}
                     </span>
                   ) : (
                     <span className="small muted" style={{ marginLeft: 6 }}>
-                      (unconfirmed)
+                      {t.dare.unconfirmed}
                     </span>
                   )}
                 </>
@@ -163,8 +165,7 @@ export function DareView({
 
         {flagged && (
           <Rv className="notice">
-            <b>Waiting for a quick human check</b> before it goes on the board.
-            Only you can see it right now — usually minutes.
+            <b>{t.dare.flaggedTitle}</b> {t.dare.flaggedBody}
           </Rv>
         )}
 
@@ -175,15 +176,15 @@ export function DareView({
             <div className="card-pad" style={{ borderTop: "2px solid var(--ink)" }}>
               {dare.proof_note && (
                 <>
-                  <p className="eyebrow">Note from {dare.doer_name}</p>
+                  <p className="eyebrow">{t.dare.noteFrom(dare.doer_name)}</p>
                   <p style={{ marginTop: 7, marginBottom: 12 }}>{dare.proof_note}</p>
                 </>
               )}
               {windowOpen && (
                 <p className="small muted">
-                  This comes down in{" "}
+                  {t.dare.comesDownIn}{" "}
                   <Clock until={dare.proof_public_until!} urgentUnderHours={6} className="small" />
-                  {" "}— proof videos are deleted 48 hours after payout.
+                  {" "}{t.dare.comesDownTail}
                 </p>
               )}
             </div>
@@ -193,17 +194,14 @@ export function DareView({
         {/* the file is gone, but the dare still happened */}
         {dare.status === "PAID" && dare.proof_deleted_at && (
           <Rv className="notice notice-cool">
-            <b>The video has come down.</b> It was up for 48 hours after
-            payout, then deleted — that&apos;s the deal we make with everyone who
-            films themselves for this. The payout below is still on-chain and
-            still checkable.
+            <b>{t.dare.videoGoneTitle}</b> {t.dare.videoGoneBody}
           </Rv>
         )}
 
         {/* what happened — dead dares tell their story */}
         {dead && (
           <Rv className="card card-pad">
-            <p className="eyebrow">What happened</p>
+            <p className="eyebrow">{t.dare.whatHappened}</p>
             {/* One string, not text interleaved with {expressions}: JSX eats
                 the space around an expression that sits at a line boundary,
                 and "Kikikeeps nothing" is the kind of typo nobody catches in
@@ -211,7 +209,7 @@ export function DareView({
             <p style={{ marginTop: 9 }}>{whatHappened}</p>
             {dare.status === "REFUNDING" && (
               <p style={{ marginTop: 11 }} className="muted small">
-                Refunds are going out now — they usually land within minutes.
+                {t.reasons.refundingNow}
               </p>
             )}
           </Rv>
@@ -220,7 +218,7 @@ export function DareView({
         {/* refunds sent list */}
         {dead && refundsSent.length > 0 && (
           <Rv className="card card-pad">
-            <p className="eyebrow">Refunds sent</p>
+            <p className="eyebrow">{t.dare.refundsSent}</p>
             <div className="backers" style={{ marginTop: 11 }}>
               {refundsSent.map((p, i) => (
                 <div className="backer" key={p.signature}>
@@ -236,11 +234,10 @@ export function DareView({
         {/* what counts as proof */}
         {!dead && dare.status !== "PAID" && (
           <Rv className="card card-pad">
-            <p className="eyebrow">What counts as proof</p>
+            <p className="eyebrow">{t.dare.proofMeans}</p>
             <p style={{ marginTop: 9 }}>
               {dare.category_blurb}{" "}
-              If the proof doesn&apos;t match the dare, it&apos;s rejected and every
-              backer is refunded.
+              {t.dare.proofRejected}
             </p>
             <p style={{ marginTop: 11 }} className="small muted">
               {dare.doer_name} also has to open the video by saying or showing
@@ -255,13 +252,13 @@ export function DareView({
           <Rv className="card card-pad">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <p className="eyebrow">
-                {dare.status === "PAID" ? "Backers who made it happen" : "Backers"}
+                {dare.status === "PAID" ? t.dare.backersMade : t.dare.backersTitle}
               </p>
               <span className="mono small muted">{dare.backer_count}</span>
             </div>
             {pledges.length === 0 ? (
               <p className="muted small" style={{ marginTop: 11 }}>
-                Nobody yet. First name on the wall gets remembered.
+                {t.dare.noBackers}
               </p>
             ) : (
               <div className="backers" style={{ marginTop: 11 }}>
@@ -289,20 +286,20 @@ export function DareView({
           <>
             <Rv className="receipt">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <p className="eyebrow">Settlement receipt</p>
-                <span className="stamp stamp-paid">Paid</span>
+                <p className="eyebrow">{t.dare.receipt}</p>
+                <span className="stamp stamp-paid">{t.dare.paidStamp}</span>
               </div>
               <Tote value={padSol(payout)} size="lg" style={{ margin: "20px 0 10px" }} />
               <div style={{ marginBottom: 22 }}>
                 <Therm pct={100} state="done" notch={false} />
               </div>
-              <div className="rowline"><span>Pot</span><span className="mono">{padSol(pot)}</span></div>
-              <div className="rowline"><span>Backers</span><span className="mono">{dare.backer_count}</span></div>
-              <div className="rowline"><span>Platform cut (10%)</span><span className="mono">{padSol(cut)}</span></div>
-              <div className="rowline"><span>Paid to {dare.doer_name}</span><b className="mono">{padSol(payout)}</b></div>
+              <div className="rowline"><span>{t.dare.potLbl}</span><span className="mono">{padSol(pot)}</span></div>
+              <div className="rowline"><span>{t.dare.backersTitle}</span><span className="mono">{dare.backer_count}</span></div>
+              <div className="rowline"><span>{t.dare.platformCut}</span><span className="mono">{padSol(cut)}</span></div>
+              <div className="rowline"><span>{t.dare.paidTo(dare.doer_name)}</span><b className="mono">{padSol(payout)}</b></div>
               {dare.settled_at && (
                 <div className="rowline">
-                  <span>Settled</span>
+                  <span>{t.dare.settled}</span>
                   <span className="mono small">
                     {new Date(dare.settled_at).toLocaleString("en-GB", {
                       day: "numeric", month: "short", year: "numeric",
@@ -313,7 +310,7 @@ export function DareView({
               )}
               {dare.payout_signature && (
                 <div className="rowline">
-                  <span>Transaction</span>
+                  <span>{t.dare.transaction}</span>
                   <a
                     className="mono small"
                     style={{ color: "var(--field)" }}
@@ -330,27 +327,26 @@ export function DareView({
             </Rv>
             <Rv><ShareCard dare={dare} /></Rv>
             <Rv className="notice notice-ok">
-              <b>Your turn.</b> {dare.doer_name} set a {formatSol(target)} target and
-              cleared it. Posting costs 0.02 SOL.
+              <b>{t.dare.yourTurn}</b> {t.dare.yourTurnBody(dare.doer_name, formatSol(target))}
               <div style={{ marginTop: 13 }}>
-                <Link className="btn btn-sm btn-primary" href="/create"><span>Post your dare</span></Link>
+                <Link className="btn btn-sm btn-primary" href="/create"><span>{t.home.post}</span></Link>
               </div>
             </Rv>
           </>
         ) : dead ? (
           <>
             <Rv className="card card-pad">
-              <p className="eyebrow">Final tote</p>
+              <p className="eyebrow">{t.dare.finalTote}</p>
               <Tote value={padSol(pot)} size="lg" style={{ margin: "18px 0 10px" }} />
               <div style={{ position: "relative", marginBottom: 28 }}>
-                <Therm pct={pct} state="dead" targetLabel={`target ${formatSol(target)}`} />
+                <Therm pct={pct} state="dead" targetLabel={t.dare.target(formatSol(target))} />
               </div>
-              <div className="rowline"><span>Backers</span><span className="mono">{dare.backer_count}</span></div>
-              <div className="rowline"><span>Refunded</span><b className="mono">{formatSol(pot)} SOL — 100%</b></div>
-              <div className="rowline"><span>Deducted</span><span className="mono">Nothing</span></div>
+              <div className="rowline"><span>{t.dare.backersTitle}</span><span className="mono">{dare.backer_count}</span></div>
+              <div className="rowline"><span>{t.dare.refundedLbl}</span><b className="mono">{t.dare.refundedFull(formatSol(pot))}</b></div>
+              <div className="rowline"><span>{t.dare.deducted}</span><span className="mono">{t.dare.nothing}</span></div>
               {dare.settled_at && (
                 <div className="rowline">
-                  <span>Closed</span>
+                  <span>{t.dare.closed}</span>
                   <span className="mono small">
                     {new Date(dare.settled_at).toLocaleDateString("en-GB", {
                       day: "numeric", month: "short", year: "numeric",
@@ -360,28 +356,25 @@ export function DareView({
               )}
             </Rv>
             <Rv className="notice notice-cool">
-              <b>Didn&apos;t get yours?</b>{" "}
-              Refunds land within a few minutes. If yours hasn&apos;t after an
-              hour, send us the transaction and we&apos;ll chase it by hand.
+              <b>{t.dare.missingTitle}</b>{" "}{t.dare.missingBody}
               <div style={{ marginTop: 13 }}>
                 <a
                   className="btn btn-sm"
                   href="https://instagram.com/puhblicity"
                   target="_blank" rel="noopener noreferrer"
                 >
-                  <span>Report a missing refund</span>
+                  <span>{t.dare.reportMissing}</span>
                 </a>
               </div>
             </Rv>
             {isOwner && dare.status !== "KILLED" && (
               <Rv className="card card-pad">
-                <p className="eyebrow">Try again</p>
+                <p className="eyebrow">{t.dare.tryAgain}</p>
                 <p style={{ marginTop: 9 }} className="small muted">
-                  Lower target, longer window, and post it when your people are
-                  awake. Most dares that fail are priced above their audience.
+                  {t.dare.tryAgainBody}
                 </p>
                 <div style={{ marginTop: 13 }}>
-                  <Link className="btn btn-sm btn-primary" href="/create"><span>Post it again</span></Link>
+                  <Link className="btn btn-sm btn-primary" href="/create"><span>{t.dare.postAgain}</span></Link>
                 </div>
               </Rv>
             )}
@@ -389,7 +382,7 @@ export function DareView({
         ) : (
           <>
             <Rv className="panel on-field" style={{ padding: 26 }}>
-              <p className="eyebrow">In the pot</p>
+              <p className="eyebrow">{t.dare.inThePot}</p>
               <Tote value={padSol(pot)} size="lg" onField style={{ margin: "16px 0 22px" }} />
               <Therm
                 pct={pct}
@@ -399,22 +392,22 @@ export function DareView({
               />
               <div className="therm-scale" style={{ color: "#8FB2DA", marginTop: 28 }}>
                 <span>
-                  {pot >= target ? "Target hit — funding closed" : `${formatSol(toGo)} SOL to go`}
+                  {pot >= target ? t.dare.targetHit : t.dare.toGo(formatSol(toGo))}
                 </span>
-                <span>ceiling 5.00</span>
+                <span>{t.dare.ceiling}</span>
               </div>
             </Rv>
 
             <Rv className="card card-pad">
               {dare.status === "OPEN" ? (
                 <>
-                  <div className="rowline"><span>Closes in</span><Clock until={dare.funding_ends_at} /></div>
-                  <div className="rowline"><span>Backers</span><span className="mono">{dare.backer_count}</span></div>
-                  <div className="rowline"><span>If it hits target</span><span className="mono">{dare.doer_name} has 48h to prove it</span></div>
-                  <div className="rowline"><span>If it doesn&apos;t</span><span className="mono">Everyone refunded in full</span></div>
+                  <div className="rowline"><span>{t.dare.closesIn}</span><Clock until={dare.funding_ends_at} /></div>
+                  <div className="rowline"><span>{t.dare.backersTitle}</span><span className="mono">{dare.backer_count}</span></div>
+                  <div className="rowline"><span>{t.dare.ifHits}</span><span className="mono">{t.dare.ifHitsVal(dare.doer_name)}</span></div>
+                  <div className="rowline"><span>{t.dare.ifNot}</span><span className="mono">{t.dare.ifNotVal}</span></div>
                   {paused ? (
                     <div className="notice" style={{ marginTop: 20 }}>
-                      <b>Paused.</b> No new pledges right now. Money already in is safe.
+                      <b>{t.dare.pausedTitle}</b> {t.dare.pausedBody}
                     </div>
                   ) : session ? (
                     <button
@@ -423,30 +416,28 @@ export function DareView({
                       onClick={() => setModal(true)}
                       disabled={flagged}
                     >
-                      <span>Back this dare</span>
+                      <span>{t.dare.backCta}</span>
                     </button>
                   ) : (
                     <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={connect}>
-                      <span>Connect to back this</span>
+                      <span>{t.dare.connectToBack}</span>
                     </button>
                   )}
                   <p className="hint" style={{ marginTop: 13 }}>
-                    Minimum 0.05 SOL. Pledges are final while a dare is open.
-                    Pledge from your own wallet — sends from an exchange lose
-                    the tag and we can&apos;t match them.
+                    {t.dare.minNote}
                   </p>
                 </>
               ) : (
                 <>
-                  <div className="rowline"><span>Status</span><span className="mono">{dare.status === "CLOSED" ? "Waiting on proof" : "Proof in review"}</span></div>
+                  <div className="rowline"><span>{t.dare.statusLbl}</span><span className="mono">{dare.status === "CLOSED" ? t.dare.waitingProof : t.dare.proofInReview}</span></div>
                   {dare.proof_due_at && dare.status === "CLOSED" && (
-                    <div className="rowline"><span>Proof due in</span><Clock until={dare.proof_due_at} urgentUnderHours={12} /></div>
+                    <div className="rowline"><span>{t.dare.proofDueIn}</span><Clock until={dare.proof_due_at} urgentUnderHours={12} /></div>
                   )}
-                  <div className="rowline"><span>Pot</span><b className="mono">{formatSol(pot)} SOL</b></div>
-                  <div className="rowline"><span>{dare.doer_name} gets</span><b className="mono">{formatSol(payout)} after our 10%</b></div>
+                  <div className="rowline"><span>{t.dare.potLbl}</span><b className="mono">{formatSol(pot)} SOL</b></div>
+                  <div className="rowline"><span>{t.dare.doerGets(dare.doer_name)}</span><b className="mono">{t.dare.afterCut(formatSol(payout))}</b></div>
                   {isOwner && (
                     <Link className="btn btn-primary btn-block" href={`/prove/${dare.id}`} style={{ marginTop: 20 }}>
-                      <span>{dare.status === "CLOSED" ? "Send your proof" : "Replace your proof"}</span>
+                      <span>{dare.status === "CLOSED" ? t.dare.sendProof : t.dare.replaceProof}</span>
                       <span className="arrow">→</span>
                     </Link>
                   )}
@@ -456,13 +447,12 @@ export function DareView({
 
             {dare.status === "OPEN" && (
               <Rv className="notice">
-                <b>Heads up.</b> If this closes while your transaction is in
-                flight, we send your SOL straight back — usually inside a minute.
+                <b>{t.dare.headsUp}</b> {t.dare.inFlight}
               </Rv>
             )}
             {isOwner && dare.status === "IN_REVIEW" && dare.reject_reason && (
               <Rv className="notice">
-                <b>Previous proof rejected:</b> {dare.reject_reason}
+                <b>{t.dare.prevRejected}</b> {dare.reject_reason}
               </Rv>
             )}
           </>
@@ -487,6 +477,7 @@ export function DareView({
 }
 
 function ProofVideo({ dareId }: { dareId: string }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -507,7 +498,7 @@ function ProofVideo({ dareId }: { dareId: string }) {
         fontFamily: "var(--font-mono)", fontSize: 13, letterSpacing: ".12em",
       }}
     >
-      ▶ &nbsp;THE PROOF
+      ▶ &nbsp;{t.dare.theProof.toUpperCase()}
     </div>
   );
 }

@@ -1,3 +1,6 @@
+import { msg } from "@/lib/i18n/errors";
+import type { Locale } from "@/lib/i18n/types";
+
 /**
  * Defences for the two free-text fields on the site: the dare `detail`
  * (140 chars) and the backer note (80 chars). Ported from SOLMATE's
@@ -81,24 +84,24 @@ export type TextVerdict =
 export function checkPublicText(
   raw: string,
   maxLen: number,
-  ownInstagram?: string | null
+  ownInstagram?: string | null,
+  locale: Locale = "en"
 ): TextVerdict {
   const value = cleanText(raw);
   if (value.length > maxLen) {
-    return { ok: false, reason: `Keep it under ${maxLen} characters.` };
+    return { ok: false, reason: msg("tooLong", locale)(maxLen) };
   }
   if (BANNED_RE.test(value)) {
     return {
       ok: false,
-      reason:
-        "That wording isn't allowed here. Dares stay legal, safe, and aimed at nobody but you — reword it.",
+      reason: msg("badText", locale),
     };
   }
   if (containsLink(value)) {
-    return { ok: false, reason: "No links in a dare. The dare speaks for itself." };
+    return { ok: false, reason: msg("noLinks", locale) };
   }
   if (PHONE_RE.test(value)) {
-    return { ok: false, reason: "No phone numbers." };
+    return { ok: false, reason: msg("noPhones", locale) };
   }
   // Only the doer's own handle may be mentioned.
   const mentions = value.match(/@[a-z0-9_.]+/gi) ?? [];
@@ -107,7 +110,7 @@ export function checkPublicText(
     if (m.slice(1).toLowerCase() !== own || !own) {
       return {
         ok: false,
-        reason: "You can mention your own handle, nobody else's. No dare aims at another person.",
+        reason: msg("ownHandleOnly", locale),
       };
     }
   }

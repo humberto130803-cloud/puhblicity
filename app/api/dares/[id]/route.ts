@@ -2,6 +2,7 @@ import { getDare, getDarePledges, getSettings, toPublicDare } from "@/lib/dares"
 import { getSession, isAdminPubkey } from "@/lib/session";
 import { isDareId } from "@/lib/ids";
 import { maybeTick } from "@/lib/tick";
+import { getLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,13 @@ export async function GET(
     return Response.json({ error: "No such dare" }, { status: 404 });
   }
 
-  const [pledges, settings] = await Promise.all([getDarePledges(id), getSettings()]);
+  const [pledges, settings, locale] = await Promise.all([
+    getDarePledges(id),
+    getSettings(),
+    getLocale(),
+  ]);
   return Response.json({
-    dare: toPublicDare(dare),
+    dare: toPublicDare(dare, locale),
     pledges,
     isOwner,
     paused: settings.paused,

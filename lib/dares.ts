@@ -1,5 +1,6 @@
 import { mustDb } from "@/lib/db";
 import { shortWallet } from "@/lib/format";
+import type { Locale } from "@/lib/i18n/types";
 
 /**
  * Query helpers and the public shaping layer. Full wallet addresses never
@@ -47,18 +48,35 @@ export type PublicDare = {
   verified: boolean;
 };
 
+/**
+ * Category text in the reader's language, falling back to English when a
+ * translation is missing — a category added later without Spanish should
+ * degrade to English, never to an empty card.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toPublicDare(d: any): PublicDare {
+function categoryText(c: any, locale: Locale) {
+  const pick = (es: string | null | undefined, en: string | null | undefined) =>
+    (locale === "es" ? es || en : en) ?? "";
+  return {
+    label: pick(c?.label_es, c?.label),
+    short: pick(c?.short_label_es, c?.short_label),
+    blurb: pick(c?.blurb_es, c?.blurb),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toPublicDare(d: any, locale: Locale = "en"): PublicDare {
+  const cat = categoryText(d.puhb_categories, locale);
   return {
     id: d.id,
     doer_name: d.doer_name,
     doer_instagram: d.doer_instagram,
     doer_wallet_short: shortWallet(d.doer_wallet),
     category_id: d.category_id,
-    category_label: d.puhb_categories?.label ?? d.category_label ?? "",
-    category_short: d.puhb_categories?.short_label ?? d.category_short ?? "",
+    category_label: cat.label || d.category_label || "",
+    category_short: cat.short || d.category_short || "",
     category_emoji: d.puhb_categories?.emoji ?? d.category_emoji ?? "",
-    category_blurb: d.puhb_categories?.blurb ?? d.category_blurb ?? "",
+    category_blurb: cat.blurb || d.category_blurb || "",
     detail: d.detail,
     target: String(d.target_lamports),
     pot: String(d.pot_lamports),
@@ -91,10 +109,11 @@ export function toPublicPledge(p: any): PublicPledge {
   };
 }
 
-const DARE_SELECT = "*, puhb_categories(label, short_label, emoji, blurb)";
+const DARE_SELECT =
+  "*, puhb_categories(label, short_label, emoji, blurb, label_es, short_label_es, blurb_es)";
 
 /** Board: flagged dares are invisible until an admin clears them. */
-export async function listBoardDares(): Promise<PublicDare[]> {
+export async function listBoardDares(locale: Locale = "en"): Promise<PublicDare[]> {
   const { data, error } = await mustDb()
     .from("puhb_dares")
     .select(DARE_SELECT)
@@ -103,7 +122,7 @@ export async function listBoardDares(): Promise<PublicDare[]> {
     .order("created_at", { ascending: false })
     .limit(60);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(toPublicDare);
+  return (data ?? []).map((d) => toPublicDare(d, locale));
 }
 
 export async function getDare(id: string) {

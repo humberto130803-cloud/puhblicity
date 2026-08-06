@@ -1,22 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Tote, Therm, fillPct, toteValue } from "@/components/tote";
+import { Tote, Therm } from "@/components/tote";
 import { Clock } from "@/components/clock";
 import { StatusStamp } from "@/components/status-stamp";
-import { formatSol, padSol } from "@/lib/format";
+import { useT } from "@/components/locale-provider";
+import { formatSol, padSol, fillPct } from "@/lib/format";
 import type { PublicDare } from "@/lib/dares";
 
-/** What the card foot says once the clock stops mattering. */
-const FOOT_TEXT: Record<string, string> = {
-  IN_REVIEW: "in review",
-  PAID: "paid out",
-  REFUNDING: "refunding",
-  REFUNDED: "refunded",
-  KILLED: "removed",
-};
-
 export function DareCard({ dare }: { dare: PublicDare }) {
+  const t = useT();
   const pot = BigInt(dare.pot);
   const target = BigInt(dare.target);
   const pct = Math.round(fillPct(pot, target));
@@ -34,15 +27,15 @@ export function DareCard({ dare }: { dare: PublicDare }) {
       <h3 className="dare-title">{dare.category_label}</h3>
       {/* The reason the board is worth scrolling: proof you can actually watch. */}
       {dare.status === "PAID" && dare.has_proof && !dare.proof_deleted_at && (
-        <span className="watch-flag">▶ Proof is up — watch it</span>
+        <span className="watch-flag">{t.card.proofUp}</span>
       )}
       <p className="dare-detail">{dare.detail || dare.category_blurb}</p>
       <Tote value={padSol(pot)} size="sm" />
       <div>
         <Therm pct={pct} state={state} />
         <div className="therm-scale">
-          <span>{pct}% of {formatSol(target)} target</span>
-          <span>{dare.backer_count} backer{dare.backer_count === 1 ? "" : "s"}</span>
+          <span>{t.card.ofTarget(pct, formatSol(target))}</span>
+          <span>{t.card.backers(dare.backer_count)}</span>
         </div>
       </div>
       <div className="dare-foot">
@@ -53,14 +46,15 @@ export function DareCard({ dare }: { dare: PublicDare }) {
             <Clock until={dare.funding_ends_at} className="small" />
           ) : dare.status === "CLOSED" && dare.proof_due_at ? (
             <span className="mono small muted">
-              proof due <Clock until={dare.proof_due_at} urgentUnderHours={12} className="small" />
+              {t.card.proofDue}{" "}
+              <Clock until={dare.proof_due_at} urgentUnderHours={12} className="small" />
             </span>
           ) : (
-            <span className="mono small muted">{FOOT_TEXT[dare.status] ?? "settled"}</span>
+            <span className="mono small muted">{t.card.foot[dare.status] ?? ""}</span>
           )}
         </span>
         <Link className="btn btn-sm btn-primary" href={`/d/${dare.id}`}>
-          <span>{dare.status === "OPEN" ? "Back this" : "See it"}</span>
+          <span>{dare.status === "OPEN" ? t.card.backThis : t.card.seeIt}</span>
         </Link>
       </div>
     </article>

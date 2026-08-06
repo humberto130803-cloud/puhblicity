@@ -7,6 +7,8 @@ import { newDareId } from "@/lib/ids";
 import { checkRateLimit, clientIp } from "@/lib/ratelimit";
 import { getSettings, countLiveDares, hasCompletedDare } from "@/lib/dares";
 import { logAction } from "@/lib/state";
+import { getErr } from "@/lib/i18n/errors";
+import { getLocale } from "@/lib/i18n";
 
 function bad(status: number, error: string) {
   return Response.json({ error }, { status });
@@ -22,8 +24,10 @@ export async function POST(request: Request) {
     return bad(429, "Slow down");
   }
 
+  const e = await getErr();
+  const locale = await getLocale();
   const session = await getSession();
-  if (!session) return bad(401, "Sign in first");
+  if (!session) return bad(401, e("signInFirst"));
 
   let body: {
     signature?: string;
@@ -44,21 +48,21 @@ export async function POST(request: Request) {
 
   const settings = await getSettings();
   if (settings.paused) {
-    return bad(503, "PUHBLICITY is paused right now. Nothing new until it's back — funds already pledged are unaffected.");
+    return bad(503, e("paused"));
   }
 
   // ---- form validation, before we spend an RPC call ----
-  if (!body.ageConfirmed) return bad(400, "You must confirm you're 18 or older.");
+  if (!body.ageConfirmed) return bad(400, e("ageRequired"));
 
   const doerName = cleanText(body.doerName ?? "");
   if (doerName.length < 2 || doerName.length > 24) {
-    return bad(400, "Name: 2 to 24 characters.");
+    return bad(400, e("nameLength"));
   }
 
   let instagram: string | null = null;
   if (body.instagram) {
     const ig = cleanText(body.instagram).replace(/^@/, "");
-    if (!/^[a-zA-Z0-9_.]{1,30}$/.test(ig)) return bad(400, "That Instagram handle doesn't look right.");
+    if (!/^[a-zA-Z0-9_.]{1,30}$/.test(ig)) return bad(400, e("badHandle"));
     instagram = ig;
   }
 
@@ -69,46 +73,46 @@ export async function POST(request: Request) {
     .eq("id", body.categoryId ?? "")
     .eq("active", true)
     .maybeSingle();
-  if (!category) return bad(400, "Pick a dare from the menu. The menu is the product.");
+  if (!category) return bad(400, e("pickFromMenu"));
 
-  const detailCheck = checkPublicText(body.detail ?? "", 140, instagram);
+  const detailCheck = checkPublicText(body.detail ?? "", 140, instagram, locale);
   if (!detailCheck.ok) return bad(400, detailCheck.reason);
 
   let target: bigint;
   try {
     target = BigInt(body.targetLamports ?? "");
   } catch {
-    return bad(400, "Bad target amount.");
+    return bad(400, e("badTarget"));
   }
   if (target < CONFIG.MIN_TARGET_LAMPORTS || target > CONFIG.CEILING_LAMPORTS) {
-    return bad(400, "Target must be between 0.25 and 5 SOL.");
+    return bad(400, e("targetRange"));
   }
 
   const hours = Number(body.fundingHours);
   if (!(CONFIG.FUNDING_WINDOWS_HOURS as readonly number[]).includes(hours)) {
-    return bad(400, "Pick a funding window: 24h, 3 days, or 7 days.");
+    return bad(400, e("badWindow"));
   }
 
   if (typeof body.signature !== "string" || typeof body.nonce !== "string") {
-    return bad(400, "Missing fee transaction.");
+    return bad(400, e("missingFee"));
   }
 
   // ---- caps ----
   const live = await countLiveDares(session.pubkey);
   if (live >= CONFIG.MAX_LIVE_DARES_PER_WALLET) {
-    return bad(400, `You have ${live} live dares. Settle one before opening another.`);
+    return bad(400, e("tooManyLive")(live));
   }
 
   const { data: openPot } = await db.rpc("puhb_open_pot_total");
   if (openPot !== null && BigInt(openPot) + target > BigInt(settings.max_total_open_pot)) {
-    return bad(503, "The board is at capacity right now. Try again after some dares settle — the total we hold at once is capped on purpose.");
+    return bad(503, e("atCapacity"));
   }
 
   // ---- on-chain fee verification. Never trust a client-reported payment. ----
-  const fee = await verifyPostingFee(body.signature, body.nonce);
+  const fee = await verifyPostingFee(body.signature, body.nonce, locale);
   if (!fee.ok) return bad(402, fee.error);
   if (fee.payer !== session.pubkey) {
-    return bad(403, "The fee was paid by a different wallet than the one signed in.");
+    return bad(403, e("feeWrongWallet"));
   }
 
   // New wallets (no prior completed dare) are flagged: on the board only
@@ -143,9 +147,9 @@ export async function POST(request: Request) {
       if (existing && existing.doer_wallet === session.pubkey) {
         return Response.json({ ok: true, id: existing.id, flagged: existing.flagged });
       }
-      return bad(409, "That fee transaction was already used for a dare.");
+      return bad(409, e("feeReused"));
     }
-    return bad(500, "Could not save the dare. Your fee signature is safe — try again with the same one.");
+    return bad(500, e("saveFailed"));
   }
 
   await logAction(session.pubkey, "dare_created", id, { flagged, target: target.toString() });

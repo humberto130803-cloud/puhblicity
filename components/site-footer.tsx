@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n";
 
-export default function SiteFooter() {
+export default async function SiteFooter() {
+  const { t } = await getT();
   return (
     <footer className="foot">
       <div className="wrap">
@@ -9,14 +11,13 @@ export default function SiteFooter() {
             <em></em>PUHBLICITY
           </span>
           <p className="small" style={{ maxWidth: "36ch", marginTop: 12, color: "rgba(255,255,255,.6)" }}>
-            We hold the pot until a dare settles. We&apos;re a small operation, not
-            a bank. The 5 SOL ceiling is there for a reason. 18+.
+            {t.footer.blurb}
           </p>
         </div>
         <div>
-          <Link href="/money">How the money works</Link>
-          <Link href="/terms">Terms</Link>
-          <Link href="/privacy">Privacy</Link>
+          <Link href="/money">{t.nav.money}</Link>
+          <Link href="/terms">{t.footer.terms}</Link>
+          <Link href="/privacy">{t.footer.privacy}</Link>
           <a href="https://instagram.com/puhblicity" target="_blank" rel="noopener noreferrer">
             @puhblicity
           </a>

@@ -6,6 +6,7 @@ import { Rv } from "@/components/reveal";
 import { Clock } from "@/components/clock";
 import { browserSupabase } from "@/components/supabase-browser";
 import { formatSol } from "@/lib/format";
+import { useT } from "@/components/locale-provider";
 import type { PublicDare } from "@/lib/dares";
 
 const MAX_SECONDS = 90;
@@ -24,6 +25,7 @@ function videoDuration(file: File): Promise<number> {
 }
 
 export function ProveForm({ dare }: { dare: PublicDare }) {
+  const t = useT();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -40,22 +42,22 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
   function pick(f: File | undefined | null) {
     setError(null);
     if (!f) return;
-    if (!ALLOWED.includes(f.type)) { setError("Video only: MP4, MOV or WebM."); return; }
-    if (f.size > MAX_BYTES) { setError("Over 50 MB — trim or compress it."); return; }
+    if (!ALLOWED.includes(f.type)) { setError(t.prove.errType); return; }
+    if (f.size > MAX_BYTES) { setError(t.prove.errSize); return; }
     setFile(f);
   }
 
   async function submit() {
     setError(null);
-    if (!file) { setError("Pick the video first."); return; }
+    if (!file) { setError(t.prove.errPick); return; }
     setBusy(true);
     try {
-      setProgress("Checking the video…");
+      setProgress(t.prove.checking);
       const dur = await videoDuration(file);
       if (dur > MAX_SECONDS + 1) {
-        throw new Error(`Max ${MAX_SECONDS} seconds — yours is ${Math.round(dur)}s. One take, tight cut.`);
+        throw new Error(t.prove.errLong(MAX_SECONDS, Math.round(dur)));
       }
-      setProgress("Getting an upload slot…");
+      setProgress(t.prove.slot);
       const startRes = await fetch("/api/proof/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,13 +66,13 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
       const start = await startRes.json();
       if (!startRes.ok) throw new Error(start.error ?? "Could not start upload");
 
-      setProgress("Uploading…");
+      setProgress(t.prove.uploading);
       const { error: upErr } = await browserSupabase()
         .storage.from("puhb-proofs")
         .uploadToSignedUrl(start.path, start.token, file, { contentType: file.type });
       if (upErr) throw new Error(upErr.message);
 
-      setProgress("Finishing…");
+      setProgress(t.prove.finishing);
       const doneRes = await fetch("/api/proof/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,7 +83,7 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
 
       router.push(`/d/${dare.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed — try again.");
+      setError(e instanceof Error ? e.message : t.prove.failed);
       setProgress("");
       setBusy(false);
     }
@@ -92,26 +94,26 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
       <Rv>
         <p className="eyebrow">{dare.id} · {dare.category_label}</p>
         <h1 className="h2" style={{ margin: "11px 0 13px" }}>
-          {dare.status === "CLOSED" ? "Send your proof" : "Replace your proof"}
+          {dare.status === "CLOSED" ? t.prove.heading : t.prove.headingReplace}
         </h1>
         <p className="lede muted">
-          One video. We watch it, then {formatSol(payout)} SOL goes to your wallet.
+          {t.prove.lede(formatSol(payout))}
         </p>
       </Rv>
 
       <Rv className="card card-pad" style={{ margin: "28px 0" }}>
-        <div className="rowline"><span>Pot</span><b className="mono">{formatSol(pot)} SOL</b></div>
-        <div className="rowline"><span>Our cut (10%)</span><span className="mono">{formatSol(cut)}</span></div>
-        <div className="rowline"><span>You receive</span><b className="mono" style={{ color: "var(--jade)" }}>{formatSol(payout)} SOL</b></div>
+        <div className="rowline"><span>{t.prove.pot}</span><b className="mono">{formatSol(pot)} SOL</b></div>
+        <div className="rowline"><span>{t.prove.cut}</span><span className="mono">{formatSol(cut)}</span></div>
+        <div className="rowline"><span>{t.prove.youGet}</span><b className="mono" style={{ color: "var(--jade)" }}>{formatSol(payout)} SOL</b></div>
         {dare.proof_due_at && dare.status === "CLOSED" && (
-          <div className="rowline"><span>Deadline</span><Clock until={dare.proof_due_at} urgentUnderHours={12} /></div>
+          <div className="rowline"><span>{t.prove.deadline}</span><Clock until={dare.proof_due_at} urgentUnderHours={12} /></div>
         )}
       </Rv>
 
       {/* The single thing that makes recycled footage impractical: a code
           that did not exist until this dare was funded. */}
       <Rv className="card card-pad" style={{ borderColor: "var(--flare)", boxShadow: "6px 6px 0 var(--flare)" }}>
-        <p className="eyebrow">Start the video with this</p>
+        <p className="eyebrow">{t.prove.codeEyebrow}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", margin: "12px 0 10px" }}>
           <span
             className="mono"
@@ -123,42 +125,38 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
             {dare.id}
           </span>
           <span style={{ fontSize: 15, flex: 1, minWidth: 200 }}>
-            Say it out loud, or hold it up written down, in the first few
-            seconds — before you do the dare.
+            {t.prove.codeBody}
           </span>
         </div>
         <p className="hint">
-          No code, no payout. It&apos;s how we know the video was filmed for this
-          dare and not pulled from somewhere else, and it&apos;s the only reason we
-          can take your word for the rest.
+          {t.prove.codeHint}
         </p>
       </Rv>
 
       <Rv className="card card-pad" style={{ marginTop: 22 }}>
-        <p className="eyebrow">What we need to see</p>
+        <p className="eyebrow">{t.prove.needToSee}</p>
         <p style={{ marginTop: 9 }}>
           {dare.category_blurb}{" "}
-          No cuts, no edits. If it doesn&apos;t match the dare we&apos;ll reject it and
-          refund your backers — you&apos;ll get one line telling you why.
+          {t.prove.needTail}
         </p>
       </Rv>
 
       <Rv className="field" style={{ marginTop: 26 }}>
-        <span className="label">The video</span>
+        <span className="label">{t.prove.theVideo}</span>
         <div
           className={`dropzone${drag ? " is-drag" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files?.[0]); }}
         >
-          <p className="h3">{file ? file.name : "Drop your video here"}</p>
+          <p className="h3">{file ? file.name : t.prove.drop}</p>
           <p className="hint" style={{ margin: "7px 0 16px" }}>
             {file
-              ? `${(file.size / 1_000_000).toFixed(1)} MB — looks good`
-              : "MP4, MOV or WebM · up to 50 MB · up to 90 seconds"}
+              ? t.prove.looksGood((file.size / 1_000_000).toFixed(1))
+              : t.prove.dropHint}
           </p>
           <button className="btn btn-sm" type="button" onClick={() => fileRef.current?.click()}>
-            <span>{file ? "Choose a different file" : "Choose a file"}</span>
+            <span>{file ? t.prove.chooseOther : t.prove.chooseFile}</span>
           </button>
           <input
             ref={fileRef}
@@ -172,12 +170,12 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
       </Rv>
 
       <Rv className="field">
-        <label className="label" htmlFor="pn">Anything we should know (optional)</label>
+        <label className="label" htmlFor="pn">{t.prove.noteLabel}</label>
         <textarea
           className="textarea"
           id="pn"
           maxLength={200}
-          placeholder="The timer's visible at 0:12."
+          placeholder={t.prove.notePlaceholder}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -185,9 +183,7 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
       </Rv>
 
       <Rv className="notice notice-cool" style={{ marginBottom: 22 }}>
-        <b>Who sees this.</b> Only us, until it&apos;s approved. Once you&apos;re paid,
-        your backers can watch it on the dare page — that&apos;s what they paid
-        for. You can ask us to delete the file any time after payout.
+        <b>{t.prove.whoSees}</b> {t.prove.whoSeesBody}
       </Rv>
 
       {error && (
@@ -196,11 +192,10 @@ export function ProveForm({ dare }: { dare: PublicDare }) {
 
       <Rv>
         <button className="btn btn-primary btn-block" onClick={() => void submit()} disabled={busy}>
-          <span>{busy ? progress || "Working…" : "Send proof"}</span>
+          <span>{busy ? progress || t.create.working : t.prove.submit}</span>
         </button>
         <p className="hint" style={{ marginTop: 11, textAlign: "center" }}>
-          You can replace it any time before we review it. If we haven&apos;t
-          reviewed within 24 hours, backers are refunded automatically.
+          {t.prove.replaceHint}
         </p>
       </Rv>
     </div>

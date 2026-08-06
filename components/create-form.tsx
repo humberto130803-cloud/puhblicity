@@ -8,6 +8,7 @@ import { useAuth } from "@/components/providers";
 import { useConnectOrSignIn } from "@/components/use-connect";
 import { payVault } from "@/components/solana-tx";
 import { parseSolToLamports } from "@/lib/format";
+import { useT } from "@/components/locale-provider";
 
 type Category = {
   id: string;
@@ -17,31 +18,16 @@ type Category = {
   group_label: string;
 };
 
-/** Order the groups read in, rather than alphabetically. */
+/**
+ * Group keys are the values stored in the database, so they stay English
+ * here and get their display name from the dictionary.
+ */
 const GROUP_ORDER = ["Nerve", "Looks", "Taste", "Body", "Online"];
-const GROUP_BLURB: Record<string, string> = {
-  Nerve: "Strangers have to be there. That's the whole difficulty.",
-  Looks: "You change something and live with it for a while.",
-  Taste: "One serving. Unpleasant, never unsafe.",
-  Body: "Short, measurable, and visibly hard.",
-  Online: "The screenshot is the proof.",
-};
 
 const TARGET_PRESETS = ["0.25", "0.50", "1.00", "2.50", "5.00"];
-const WINDOWS = [
-  { hours: 24, label: "24 hours" },
-  { hours: 72, label: "3 days" },
-  { hours: 168, label: "7 days" },
-];
 const FEE_LAMPORTS = 20_000_000n;
 const FEE_CACHE_KEY = "puhb.feetx";
-
-const CHECKS = [
-  "I'm 18 or over, and this is my dare — nobody is making me do it.",
-  "If my target hits, I have 48 hours to upload one video. If I don't, backers are refunded and I keep nothing.",
-  "Nobody else appears in my video without agreeing to it.",
-  "I understand PUHBLICITY holds the pot until the dare settles, and takes 10% only if I'm paid.",
-];
+const CHECK_COUNT = 4;
 
 export function CreateForm({
   categories,
@@ -52,6 +38,7 @@ export function CreateForm({
   paused: boolean;
   vault: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const { session } = useAuth();
   const connect = useConnectOrSignIn();
@@ -64,7 +51,9 @@ export function CreateForm({
   const [instagram, setInstagram] = useState("");
   const [targetSol, setTargetSol] = useState("1.00");
   const [hours, setHours] = useState(72);
-  const [checks, setChecks] = useState<boolean[]>(CHECKS.map(() => false));
+  const [checks, setChecks] = useState<boolean[]>(
+    Array.from({ length: CHECK_COUNT }, () => false)
+  );
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -79,13 +68,13 @@ export function CreateForm({
       connect();
       return;
     }
-    if (!categoryId) return setError("Pick a dare from the menu.");
-    if (doerName.trim().length < 2) return setError("Your name goes on the board — 2 to 24 characters.");
+    if (!categoryId) return setError(t.create.errPick);
+    if (doerName.trim().length < 2) return setError(t.create.errName);
     const target = parseSolToLamports(targetSol);
     if (target === null || target < 250_000_000n || target > 5_000_000_000n) {
-      return setError("Target must be between 0.25 and 5.00 SOL. The ceiling is the ceiling.");
+      return setError(t.create.errTarget);
     }
-    if (!allChecked) return setError("Tick all four boxes — they're the whole deal.");
+    if (!allChecked) return setError(t.create.errChecks);
 
     setBusy(true);
     try {
@@ -96,7 +85,7 @@ export function CreateForm({
       } catch { /* ignore */ }
 
       if (!feeTx) {
-        setPhase("Paying the 0.02 SOL posting fee…");
+        setPhase(t.create.payingFee);
         const nonce = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) =>
           b.toString(16).padStart(2, "0")
         ).join("");
@@ -104,10 +93,10 @@ export function CreateForm({
         feeTx = { signature, nonce };
         try { localStorage.setItem(FEE_CACHE_KEY, JSON.stringify(feeTx)); } catch { /* ignore */ }
       } else {
-        setPhase("Reusing your already-paid posting fee…");
+        setPhase(t.create.reusingFee);
       }
 
-      setPhase("Opening the dare…");
+      setPhase(t.create.opening);
       const res = await fetch("/api/dares/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +122,7 @@ export function CreateForm({
       try { localStorage.removeItem(FEE_CACHE_KEY); } catch { /* ignore */ }
       router.push(`/d/${data.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something broke — your fee, if paid, is saved for retry.");
+      setError(e instanceof Error ? e.message : t.create.genericErr);
       setBusy(false);
       setPhase("");
     }
@@ -143,7 +132,7 @@ export function CreateForm({
     return (
       <div className="wrap-narrow" style={{ padding: "44px 24px 90px" }}>
         <div className="notice" role="alert">
-          <b>Paused.</b> No new dares right now. Money already pledged is unaffected.
+          <b>{t.create.pausedTitle}</b> {t.create.pausedBody}
         </div>
       </div>
     );
@@ -152,24 +141,23 @@ export function CreateForm({
   return (
     <div className="wrap-narrow" style={{ padding: "44px 24px 90px" }}>
       <Rv>
-        <p className="eyebrow">Post a dare</p>
-        <h1 className="h2" style={{ margin: "11px 0 13px" }}>What will you do?</h1>
+        <p className="eyebrow">{t.create.eyebrow}</p>
+        <h1 className="h2" style={{ margin: "11px 0 13px" }}>{t.create.heading}</h1>
         <p className="lede muted">
-          Pick from the menu. You can&apos;t invent one — the menu is how we keep
-          this fun instead of dangerous.
+          {t.create.lede}
         </p>
       </Rv>
 
       <Rv className="field" style={{ marginTop: 34 }}>
-        <span className="label">The dare</span>
+        <span className="label">{t.create.theDare}</span>
         <p className="hint" style={{ marginBottom: 4 }}>
-          {`${categories.length} of them. They're built to be hard to fake — a stranger has to react, or it's one unbroken take, or it leaves something anyone can check afterwards.`}
+          {t.create.count(categories.length)}
         </p>
         {GROUP_ORDER.filter((g) => categories.some((c) => c.group_label === g)).map((group) => (
           <div key={group} style={{ marginTop: 18 }}>
-            <p className="eyebrow" style={{ marginBottom: 2 }}>{group}</p>
-            <p className="hint" style={{ marginBottom: 10 }}>{GROUP_BLURB[group]}</p>
-            <div className="catgrid" role="group" aria-label={`${group} dares`}>
+            <p className="eyebrow" style={{ marginBottom: 2 }}>{t.create.groups[group] ?? group}</p>
+            <p className="hint" style={{ marginBottom: 10 }}>{t.create.groupBlurbs[group]}</p>
+            <div className="catgrid" role="group" aria-label={t.create.groups[group] ?? group}>
               {categories
                 .filter((c) => c.group_label === group)
                 .map((c) => (
@@ -189,20 +177,18 @@ export function CreateForm({
           </div>
         ))}
         <p className="hint" style={{ marginTop: 14 }}>
-          Nothing involving heights, vehicles, fire, alcohol, drugs, or anyone
-          who hasn&apos;t agreed to be in it. That&apos;s the whole moderation policy,
-          built into the menu.
+          {t.create.banned}
         </p>
       </Rv>
 
       <Rv className="field">
-        <label className="label" htmlFor="d">Your specifics</label>
-        <p className="hint">The bit that makes it yours. Keep it about you — no links, no phone numbers, nobody else&apos;s name.</p>
+        <label className="label" htmlFor="d">{t.create.specifics}</label>
+        <p className="hint">{t.create.specificsHint}</p>
         <textarea
           className="textarea"
           id="d"
           maxLength={140}
-          placeholder="No milk on the table. My roommate films it and she is not going to help me."
+          placeholder={t.create.specificsPlaceholder}
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
         />
@@ -210,8 +196,8 @@ export function CreateForm({
       </Rv>
 
       <Rv className="field">
-        <label className="label" htmlFor="t">Your target</label>
-        <p className="hint">The least you&apos;ll do it for. Under this by the deadline and everyone&apos;s refunded.</p>
+        <label className="label" htmlFor="t">{t.create.target}</label>
+        <p className="hint">{t.create.targetHint}</p>
         <input
           className="input mono"
           id="t"
@@ -227,32 +213,31 @@ export function CreateForm({
           ))}
         </div>
         <p className="hint">
-          Between 0.25 and 5.00 SOL. The ceiling is 5 and it does not move.
-          Low targets fill — that&apos;s how you get on the board.
+          {t.create.targetRule}
         </p>
       </Rv>
 
       <Rv className="field">
-        <label className="label" htmlFor="w">Funding window</label>
+        <label className="label" htmlFor="w">{t.create.window}</label>
         <select
           className="select"
           id="w"
           value={hours}
           onChange={(e) => setHours(Number(e.target.value))}
         >
-          {WINDOWS.map((w) => (
-            <option key={w.hours} value={w.hours}>{w.label}</option>
-          ))}
+          <option value={24}>{t.create.windows.h24}</option>
+          <option value={72}>{t.create.windows.d3}</option>
+          <option value={168}>{t.create.windows.d7}</option>
         </select>
       </Rv>
 
       <Rv className="field">
-        <label className="label" htmlFor="n">Your name and handle</label>
+        <label className="label" htmlFor="n">{t.create.nameHandle}</label>
         <input
           className="input"
           id="n"
           maxLength={24}
-          placeholder="Your name on the board"
+          placeholder={t.create.namePlaceholder}
           value={doerName}
           onChange={(e) => setDoerName(e.target.value)}
           style={{ marginBottom: 9 }}
@@ -261,13 +246,12 @@ export function CreateForm({
           className="input"
           id="ig"
           maxLength={31}
-          placeholder="@instagram (optional)"
+          placeholder={t.create.igPlaceholder}
           value={instagram}
           onChange={(e) => setInstagram(e.target.value)}
         />
         <p className="hint">
-          Payouts go to the wallet you&apos;re connected with. Use a wallet you
-          control — not an exchange address.
+          {t.create.walletHint}
         </p>
         {instagram.trim() && (
           <div className="notice notice-cool" style={{ marginTop: 10 }}>
@@ -281,9 +265,9 @@ export function CreateForm({
       </Rv>
 
       <Rv className="card card-pad" style={{ marginTop: 30 }}>
-        <p className="eyebrow">Before you post</p>
+        <p className="eyebrow">{t.create.before}</p>
         <div style={{ marginTop: 16 }}>
-          {CHECKS.map((text, i) => (
+          {t.create.checks.map((text, i) => (
             <label className="checkline" key={i}>
               <input
                 type="checkbox"
@@ -297,11 +281,11 @@ export function CreateForm({
           ))}
         </div>
         <div className="rowline" style={{ marginTop: 16 }}>
-          <span>Posting fee</span><b className="mono">0.02 SOL</b>
+          <span>{t.create.fee}</span><b className="mono">0.02 SOL</b>
         </div>
         <div className="rowline">
-          <span>Refundable?</span>
-          <span className="mono muted">No — it&apos;s what keeps spam off the board</span>
+          <span>{t.create.refundable}</span>
+          <span className="mono muted">{t.create.refundableVal}</span>
         </div>
         {error && (
           <div className="notice" role="alert" style={{ marginTop: 16 }}>{error}</div>
@@ -313,16 +297,15 @@ export function CreateForm({
             onClick={() => void submit()}
             disabled={busy}
           >
-            <span>{busy ? phase || "Working…" : "Pay 0.02 SOL and post"}</span>
+            <span>{busy ? phase || t.create.working : t.create.submit}</span>
           </button>
         ) : (
           <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={connect}>
-            <span>Connect to post</span>
+            <span>{t.create.connect}</span>
           </button>
         )}
         <p className="hint" style={{ marginTop: 11, textAlign: "center" }}>
-          First dare from a new wallet gets a quick look from us before it
-          hits the board. Usually minutes.
+          {t.create.firstDare}
         </p>
       </Rv>
     </div>

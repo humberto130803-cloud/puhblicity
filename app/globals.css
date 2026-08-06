@@ -405,6 +405,22 @@ button{cursor:pointer}
   body{background:var(--paper)}
 }
 
+/* language toggle */
+.lang-toggle{display:inline-flex;border:2px solid var(--ink);border-radius:2px;overflow:hidden;flex:none}
+.lang-toggle button{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;padding:5px 8px;
+  background:var(--white);color:var(--slate);border:0;line-height:1.2;transition:background .16s,color .16s
+}
+.lang-toggle button + button{border-left:2px solid var(--ink)}
+.lang-toggle button:hover{color:var(--ink)}
+.lang-toggle button[aria-pressed="true"]{background:var(--ink);color:var(--gold)}
+.lang-toggle.on-dark{border-color:rgba(255,255,255,.4)}
+.lang-toggle.on-dark button{background:transparent;color:rgba(255,255,255,.62)}
+.lang-toggle.on-dark button + button{border-left-color:rgba(255,255,255,.4)}
+.lang-toggle.on-dark button:hover{color:#fff}
+.lang-toggle.on-dark button[aria-pressed="true"]{background:var(--gold);color:var(--ink)}
+.lang-toggle.is-pending{opacity:.55}
+
 /* sign-in failure — must be impossible to miss */
 .auth-error{
   position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));

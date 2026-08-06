@@ -5,6 +5,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { payVault } from "@/components/solana-tx";
 import { useConnectOrSignIn } from "@/components/use-connect";
 import { formatSol, parseSolToLamports } from "@/lib/format";
+import { useT } from "@/components/locale-provider";
 import type { PublicDare } from "@/lib/dares";
 
 const PRESETS = ["0.05", "0.10", "0.25", "0.50"];
@@ -26,6 +27,7 @@ export function BackModal({
   onClose: () => void;
   onBacked: (lamports: bigint) => void;
 }) {
+  const t = useT();
   const wallet = useWallet();
   const { connection } = useConnection();
   const connectOrSignIn = useConnectOrSignIn();
@@ -55,11 +57,11 @@ export function BackModal({
       return;
     }
     if (lamports === null) {
-      setError("That amount doesn't parse. Plain numbers, like 0.1.");
+      setError(t.backModal.badAmount);
       return;
     }
     if (lamports < MIN_PLEDGE) {
-      setError("Minimum pledge is 0.05 SOL.");
+      setError(t.backModal.belowMin);
       return;
     }
     setBusy(true);
@@ -73,7 +75,7 @@ export function BackModal({
       onBacked(lamports);
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : "Something broke. Nothing left your wallet unless it says so."
+        e instanceof Error ? e.message : t.backModal.broke
       );
       setBusy(false);
     }
@@ -92,14 +94,14 @@ export function BackModal({
       <div className="modal">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
-            <p className="eyebrow">Backing</p>
+            <p className="eyebrow">{t.backModal.eyebrow}</p>
             <h2 className="h3" style={{ marginTop: 7 }}>{dare.category_label}</h2>
           </div>
           <button className="modal-x" aria-label="Close" onClick={onClose} disabled={busy}>✕</button>
         </div>
 
         <div className="field" style={{ marginTop: 24 }}>
-          <label className="label" htmlFor="amt">How much</label>
+          <label className="label" htmlFor="amt">{t.backModal.howMuch}</label>
           <input
             className="input mono"
             id="amt"
@@ -115,18 +117,18 @@ export function BackModal({
             ))}
             {finishIt && (
               <button type="button" className="btn btn-sm" onClick={() => setAmount(finishIt)}>
-                <span>{finishIt} — finish it</span>
+                <span>{t.backModal.finishIt(finishIt)}</span>
               </button>
             )}
           </div>
         </div>
 
         <div className="field">
-          <label className="label" htmlFor="note">Say something (optional)</label>
+          <label className="label" htmlFor="note">{t.backModal.saySomething}</label>
           <input
             className="input"
             id="note"
-            placeholder="do it without water"
+            placeholder={t.backModal.notePlaceholder}
             maxLength={80}
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -136,17 +138,17 @@ export function BackModal({
 
         <div className="card card-flat" style={{ borderWidth: 1, padding: 15, marginBottom: 18 }}>
           <div className="rowline" style={{ padding: "6px 0" }}>
-            <span>Your pledge</span>
+            <span>{t.backModal.yourPledge}</span>
             <b className="mono">{lamports !== null ? `${formatSol(lamports)} SOL` : "—"}</b>
           </div>
           <div className="rowline" style={{ padding: "6px 0" }}>
-            <span>Network fee</span><span className="mono muted">~0.000005</span>
+            <span>{t.backModal.networkFee}</span><span className="mono muted">~0.000005</span>
           </div>
           <div className="rowline" style={{ padding: "6px 0" }}>
-            <span>Pot after this</span>
+            <span>{t.backModal.potAfter}</span>
             <b className="mono">
               {lamports !== null
-                ? `${formatSol(pot + lamports)} / ${formatSol(target)}${crosses ? " — closes" : ""}`
+                ? `${formatSol(pot + lamports)} / ${formatSol(target)}${crosses ? t.backModal.closes : ""}`
                 : "—"}
             </b>
           </div>
@@ -154,10 +156,7 @@ export function BackModal({
 
         {crosses && (
           <div className="notice notice-cool" style={{ marginBottom: 20 }}>
-            This pledge takes the dare past its target, so funding closes the
-            moment it lands. {dare.doer_name} gets 48 hours to send proof. If
-            proof doesn&apos;t come, or we reject it, you get all{" "}
-            {lamports !== null ? formatSol(lamports) : ""} back.
+            {t.backModal.crosses(dare.doer_name, lamports !== null ? formatSol(lamports) : "")}
           </div>
         )}
 
@@ -168,12 +167,12 @@ export function BackModal({
         <button className="btn btn-primary btn-block" onClick={() => void submit()} disabled={busy}>
           <span>
             {busy
-              ? "Waiting on your wallet…"
-              : `Back with ${lamports !== null ? formatSol(lamports) : "…"} SOL`}
+              ? t.backModal.waiting
+              : t.backModal.submit(lamports !== null ? formatSol(lamports) : "…")}
           </span>
         </button>
         <p className="hint" style={{ marginTop: 11, textAlign: "center" }}>
-          Your wallet will ask you to approve. Pledges are final while a dare is open.
+          {t.backModal.approve}
         </p>
       </div>
     </div>

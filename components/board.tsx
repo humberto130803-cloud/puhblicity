@@ -4,19 +4,20 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DareCard } from "@/components/dare-card";
 import { Rv } from "@/components/reveal";
+import { useT } from "@/components/locale-provider";
 import type { PublicDare } from "@/lib/dares";
 
 type FilterKey = "all" | "closing" | "nearly" | "new";
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "closing", label: "Closing soon" },
-  { key: "nearly", label: "Nearly funded" },
-  { key: "new", label: "Just posted" },
-];
-
 export function Board({ dares }: { dares: PublicDare[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");
+  const t = useT();
+  const FILTERS: { key: FilterKey; label: string }[] = [
+    { key: "all", label: t.board.filters.all },
+    { key: "closing", label: t.board.filters.closing },
+    { key: "nearly", label: t.board.filters.nearly },
+    { key: "new", label: t.board.filters.fresh },
+  ];
 
   const open = useMemo(() => dares.filter((d) => d.status === "OPEN"), [dares]);
   const funded = useMemo(
@@ -49,10 +50,10 @@ export function Board({ dares }: { dares: PublicDare[] }) {
       <div className="wrap section" id="board">
         <Rv className="section-head">
           <div>
-            <p className="eyebrow">The board</p>
-            <h2 className="h2" style={{ marginTop: 9 }}>Open right now</h2>
+            <p className="eyebrow">{t.board.eyebrow}</p>
+            <h2 className="h2" style={{ marginTop: 9 }}>{t.board.heading}</h2>
           </div>
-          <div className="filters" role="group" aria-label="Sort the board">
+          <div className="filters" role="group" aria-label={t.board.eyebrow}>
             {FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -85,20 +86,18 @@ export function Board({ dares }: { dares: PublicDare[] }) {
           }}
         >
           <div>
-            <p className="h3">{shown.length === 0 ? "Nothing open right now." : "Nothing else open right now."}</p>
-            <p className="muted small" style={{ marginTop: 4 }}>
-              Somebody has to go first. It costs 0.02 SOL to post.
-            </p>
+            <p className="h3">{shown.length === 0 ? t.board.emptyTitle : t.board.elseTitle}</p>
+            <p className="muted small" style={{ marginTop: 4 }}>{t.board.emptySub}</p>
           </div>
           <Link className="btn btn-primary" href="/create">
-            <span>Post your dare</span><span className="arrow">→</span>
+            <span>{t.home.post}</span><span className="arrow">→</span>
           </Link>
         </Rv>
 
         {funded.length > 0 && (
           <>
             <Rv as="p" className="eyebrow" style={{ margin: "40px 0 16px" }}>
-              Funded — waiting on proof
+              {t.board.funded}
             </Rv>
             <div className="grid">
               {funded.map((d, i) => (
@@ -113,7 +112,7 @@ export function Board({ dares }: { dares: PublicDare[] }) {
         {paid.length > 0 && (
           <>
             <Rv as="p" className="eyebrow" style={{ margin: "40px 0 16px" }}>
-              The wall — done and paid
+              {t.board.wall}
             </Rv>
             <div className="grid">
               {paid.map((d, i) => (
